@@ -1,0 +1,153 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head><body><div id="out"></div><script>
+const INK = "#1b1b22";
+const O = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
+let uid = 0;
+function mix(hex, other, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const a = p(hex), b = p(other);
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+const dark = (c, t = 0.24) => mix(c, "#141428", t);
+const light = (c, t = 0.35) => mix(c, "#ffffff", t);
+// Cel-shaded shape: shadow color underneath, base color shifted toward the light (top-left), outline on top.
+function S(tag, attrs, fill, opt = {}) {
+  const id = "c" + uid++;
+  const dx = opt.dx ?? -8, dy = opt.dy ?? -6;
+  const hl = opt.hl ? `<g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${light(fill, 0.45)}" transform="translate(${-dx * 1.6},${-dy * 1.6}) scale(1)" opacity="0"/></g>` : "";
+  return `<clipPath id="${id}"><${tag} ${attrs}/></clipPath>
+    <${tag} ${attrs} fill="${dark(fill)}" stroke="none"/>
+    <g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${fill}" transform="translate(${dx},${dy})"/></g>${hl}
+    <${tag} ${attrs} fill="none"/>`;
+}
+const svg = (vb, inner, bg) => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${bg || ""}<g ${O}>${inner}</g></svg>`;
+function bgCard(vb, color) {
+  const [, , w, h] = vb.split(" ").map(Number);
+  const id = "g" + uid++;
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(color, "#ffffff", 0.82)}"/><stop offset="1" stop-color="${mix(color, "#ffffff", 0.62)}"/></linearGradient></defs>
+    <rect x="-20" y="-20" width="${w + 40}" height="${h + 40}" fill="url(#${id})"/>
+    <circle cx="${w * 0.82}" cy="${h * 0.16}" r="${w * 0.1}" fill="#ffffff" opacity=".5"/>`;
+}
+const shine = (x, y, w = 10, h = 22, r = -20) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w / 2}" fill="#ffffff" opacity=".55" stroke="none" transform="rotate(${r} ${x} ${y})"/>`;
+
+function eyes({ y = 100, look = 0, lid = false, brow = "flat", browColor = INK } = {}) {
+  const brows = {
+    flat: `M70 ${y - 18} Q82 ${y - 23} 92 ${y - 18} M108 ${y - 18} Q118 ${y - 23} 130 ${y - 18}`,
+    worried: `M70 ${y - 16} Q82 ${y - 24} 92 ${y - 24} M108 ${y - 24} Q118 ${y - 24} 130 ${y - 16}`,
+    sharp: `M70 ${y - 22} L92 ${y - 16} M108 ${y - 16} L130 ${y - 22}`,
+    up: `M70 ${y - 20} Q82 ${y - 30} 92 ${y - 22} M108 ${y - 22} Q118 ${y - 30} 130 ${y - 20}`,
+  }[brow];
+  return `<ellipse cx="82" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/><ellipse cx="118" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/>
+    <circle cx="${83 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/><circle cx="${119 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/>
+    <circle cx="${85 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/><circle cx="${121 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/>
+    ${lid ? `<path d="M73 ${y - 4} Q82 ${y - 12} 91 ${y - 4} M109 ${y - 4} Q118 ${y - 12} 127 ${y - 4}" fill="none" stroke-width="3.5"/>` : ""}
+    <path d="${brows}" fill="none" stroke="${browColor}" stroke-width="5"/>`;
+}
+const nose = (skin) => `<path d="M100 104 Q94 116 101 118" fill="none" stroke="${dark(skin, 0.45)}" stroke-width="3"/>`;
+const ears = (skin) => S("ellipse", `cx="50" cy="104" rx="9" ry="12"`, skin) + S("ellipse", `cx="150" cy="104" rx="9" ry="12"`, skin);
+const hand = (cx, cy, skin) => S("circle", `cx="${cx}" cy="${cy}" r="11.5"`, skin) + `<path d="M${cx - 6} ${cy - 2} q-6 -2 -6 4" fill="none" stroke-width="3"/>`;
+const groundShadow = `<ellipse cx="100" cy="332" rx="62" ry="9" fill="${INK}" opacity=".18" stroke="none"/>`;
+
+// Body layout: every character gets its own shape so the silhouette alone identifies them.
+function geom(L = {}) {
+  const g = {
+    cx: 100, feet: 326,
+    torsoW: L.torsoW ?? 84, torsoH: L.torsoH ?? 124, legH: L.legH ?? 60, legW: L.legW ?? 24, legGap: L.legGap ?? 8,
+    armW: L.armW ?? 24, armH: L.armH ?? 88, headS: L.headS ?? 1, headDX: L.headDX ?? 0, headDY: L.headDY ?? 0,
+  };
+  g.legTop = g.feet - 6 - g.legH;
+  g.bottom = g.legTop + 10;
+  g.top = g.bottom - g.torsoH;
+  g.x = g.cx - g.torsoW / 2;
+  g.right = g.x + g.torsoW;
+  g.shoulder = g.top + 12;
+  g.armLX = g.x - g.armW + 4;
+  g.armRX = g.right - 4;
+  g.handY = g.shoulder + g.armH + 4;
+  g.handLX = g.armLX + g.armW / 2;
+  g.handRX = g.armRX + g.armW / 2;
+  g.headCX = g.cx + g.headDX;
+  g.headCY = g.top - 8 - 52 * g.headS + 10 + g.headDY;
+  g.legLX = g.cx - g.legGap / 2 - g.legW;
+  g.legRX = g.cx + g.legGap / 2;
+  return g;
+}
+const call = (v, g) => (typeof v === "function" ? v(g) : v || "");
+
+function person(o) {
+  const g = geom(o.L);
+  const { skin, shirt, pants, shoes = "#2b2b33" } = o;
+  const sl = o.sleeve || shirt;
+  const rx = Math.min(24, g.torsoW / 3);
+  const torsoShape = o.torsoShape ? o.torsoShape(g) : S("rect", `x="${g.x}" y="${g.top}" width="${g.torsoW}" height="${g.torsoH}" rx="${rx}"`, shirt);
+  const defaultArms = S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handLX, g.handY, skin)
+    + S("rect", `x="${g.armRX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handRX, g.handY, skin);
+  const defaultLegs = S("rect", `x="${g.legLX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants)
+    + S("rect", `x="${g.legRX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants);
+  const shoe = (lx, w) => S("path", `d="M${lx - 10} ${g.feet} Q${lx - 10} ${g.feet - 12} ${lx + 4} ${g.feet - 12} L${lx + w - 2} ${g.feet - 12} Q${lx + w + 12} ${g.feet - 12} ${lx + w + 12} ${g.feet} Z"`, shoes);
+  const headT = `translate(${g.headCX - 100 * g.headS} ${g.headCY - 98 * g.headS}) scale(${g.headS})`;
+  const headPart = `<g transform="${headT}">
+      ${call(o.headBack, g)}
+      ${o.head === false ? "" : ears(skin) + S("circle", `cx="100" cy="98" r="52"`, skin)}
+      ${o.head === false ? "" : `<circle cx="70" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/><circle cx="130" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/>`}
+      ${call(o.hair, g)}${call(o.face, g)}</g>`;
+  const lean = o.lean || 0, sc = o.scale || 1;
+  return `<ellipse cx="100" cy="332" rx="${62 * sc + (o.L?.torsoW ?? 84) / 6 - 14}" ry="9" fill="${INK}" opacity=".18" stroke="none"/>
+    <g transform="translate(100 ${g.feet}) rotate(${lean}) scale(${sc}) translate(-100 ${-g.feet})">
+    ${call(o.back, g)}
+    ${o.legs ? o.legs(g) : defaultLegs}
+    ${shoe(g.legLX, g.legW)}${shoe(g.legRX, g.legW)}
+    <path d="M${g.legLX - 10} ${g.feet} L${g.legLX + g.legW + 12} ${g.feet} M${g.legRX - 10} ${g.feet} L${g.legRX + g.legW + 12} ${g.feet}" fill="none" stroke="${light(shoes, 0.5)}" stroke-width="3"/>
+    ${torsoShape}
+    ${call(o.torso, g)}
+    ${o.arms ? o.arms(g) : defaultArms}
+    ${o.head === false ? "" : S("rect", `x="${g.headCX - 10}" y="${g.top - 14}" width="20" height="18" rx="4"`, skin, { dx: -4, dy: -2 })}
+    ${headPart}
+    ${call(o.front, g)}
+    </g>`;
+}
+
+
+const FONT = `font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold"`;
+// The mark: two choice tiles, A (yellow) and B (red), tilted toward each other, with a small "ou" between them.
+function mark(cx, cy, s) {
+  const tile = (x, y, rot, fill, letter) => `<g transform="translate(${x} ${y}) rotate(${rot})">
+      ${S("rect", `x="-120" y="-120" width="240" height="240" rx="46"`, fill, { dx: -12, dy: -10 })}
+      <rect x="-92" y="-98" width="60" height="24" rx="12" fill="#ffffff" opacity=".45" stroke="none" transform="rotate(-20 -62 -86)"/>
+      <text x="0" y="62" ${FONT} font-size="190" text-anchor="middle" fill="${INK}">${letter}</text>
+      <text x="-4" y="56" ${FONT} font-size="190" text-anchor="middle" fill="#ffffff">${letter}</text></g>`;
+  return `<g transform="translate(${cx} ${cy}) scale(${s})"><g ${O} stroke-width="10">
+      ${tile(-122, 6, -9, "#f2c230", "A")}${tile(122, -6, 9, "#e8453c", "B")}
+      ${S("circle", `cx="0" cy="0" r="64"`, "#ffffff", { dx: -5, dy: -5 })}
+      <text x="0" y="22" ${FONT} font-size="62" text-anchor="middle" fill="${INK}" stroke="none">ou</text></g></g>`;
+}
+const bgPattern = (w, h, id) => `<pattern id="${id}" width="180" height="180" patternUnits="userSpaceOnUse" patternTransform="rotate(-14)">
+    <text x="20" y="80" ${FONT} font-size="64" fill="#ffffff" opacity=".05">A</text><text x="110" y="170" ${FONT} font-size="64" fill="#ffffff" opacity=".05">B</text></pattern>
+  <rect width="${w}" height="${h}" fill="url(#${id})"/>`;
+// Profile picture (800x800, cropped to a circle by YouTube)
+const perfil = `<svg viewBox="0 0 800 800" width="800" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs><radialGradient id="bgP" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#2a3a66"/><stop offset="1" stop-color="#0b1022"/></radialGradient></defs>
+  <rect width="800" height="800" fill="url(#bgP)"/>${bgPattern(800, 800, "pp")}
+  ${mark(400, 400, 1.18)}
+</svg>`;
+// YouTube banner (2560x1440); everything that matters sits inside the 1546x423 safe area in the middle.
+const banner = `<svg viewBox="0 0 2560 1440" width="2560" height="1440" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="bgB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1022"/><stop offset=".5" stop-color="#1f2d55"/><stop offset="1" stop-color="#0b1022"/></linearGradient></defs>
+  <rect width="2560" height="1440" fill="url(#bgB)"/>${bgPattern(2560, 1440, "pb")}
+  <g ${O} stroke-width="8" opacity=".9">
+    ${S("circle", `cx="420" cy="380" r="70"`, "#f2c230")}<text x="420" y="410" ${FONT} font-size="90" text-anchor="middle" fill="${INK}" stroke="none">?</text>
+    ${S("circle", `cx="2150" cy="1080" r="80"`, "#e8453c")}<text x="2150" y="1114" ${FONT} font-size="100" text-anchor="middle" fill="#fff" stroke="none">!</text>
+    <path d="M2060 360 q90 -60 170 10" fill="none" stroke="#f2c230" stroke-width="12" stroke-dasharray="4 22"/>
+    <path d="M330 1060 q110 70 210 -10" fill="none" stroke="#e8453c" stroke-width="12" stroke-dasharray="4 22"/>
+  </g>
+  ${mark(800, 720, 0.86)}
+  <g ${FONT}>
+    <text x="1050" y="720" font-size="190" fill="${INK}" stroke="${INK}" stroke-width="30" stroke-linejoin="round" paint-order="stroke">A ou B</text>
+    <text x="1042" y="712" font-size="190" fill="#ffffff">A <tspan fill="#ffe08a">ou</tspan> B</text>
+    <text x="1054" y="796" font-size="46" fill="#cfe0ff" letter-spacing="3">HISTÓRIAS QUE VOCÊ DECIDE</text>
+    <rect x="1050" y="830" width="560" height="64" rx="32" fill="#e8453c" stroke="${INK}" stroke-width="6"/>
+    <text x="1330" y="875" font-size="36" fill="#ffffff" text-anchor="middle" letter-spacing="2">SÉRIES ANIMADAS</text>
+  </g>
+</svg>`;
+const m = location.hash.slice(1);
+document.getElementById("out").innerHTML = m === "banner" ? banner : perfil;
+</script></body></html>
