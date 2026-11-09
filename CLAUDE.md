@@ -34,3 +34,8 @@ Quando o senhor pedir para responder alguém:
 
 - Escreva o rascunho e avise que está pronto.
 - **Nunca envie nada sem a confirmação explícita dele.**
+
+## Painel de voz
+
+- `painel/jarvis.html` é publicado como artifact em https://claude.ai/artifact/WY5zQxwvtS6g545fNArprx (capacidades: `sample` e `mcp` com Google Calendar `list_events`).
+- Para atualizar, publique o mesmo arquivo com o `url` acima, para manter o link que está na tela inicial do celular.
