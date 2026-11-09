@@ -38,4 +38,6 @@ Quando o senhor pedir para responder alguém:
 ## Painel de voz
 
 - `painel/jarvis.html` é publicado como artifact em https://claude.ai/artifact/WY5zQxwvtS6g545fNArprx (capacidades: `sample` e `mcp` com Google Calendar `list_events`).
+- A voz é neural e gratuita (Piper, vozes brasileiras Faber, Cadu e Jeff), roda no próprio celular e fica em cache no IndexedDB. Os arquivos ficam em `voz/` no artifact; para recriá-los, rode `painel/preparar-voz.sh` e publique-os em lotes de até 64 MB.
+- Amostras das vozes: `amostras-de-voz/`.
 - Para atualizar, publique o mesmo arquivo com o `url` acima, para manter o link que está na tela inicial do celular.
