@@ -155,6 +155,16 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.chip select {
+  min-width: 0;
+  width: 100%;
+  font: 13px var(--body);
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 2px 4px;
+}
+.chip select:focus-visible { outline: 1px solid var(--ice); }
 .chip button {
   justify-self: start;
   margin-top: 2px;
@@ -288,6 +298,7 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
     <div class="chip">
       <b>VOZ</b>
       <span id="voiceText">Português do Brasil</span>
+      <select id="voiceSel" aria-label="Escolher a voz do JARVIS" hidden></select>
     </div>
   </section>
 
@@ -308,7 +319,7 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
 
   <div class="controls">
     <button type="button" id="muteBtn" aria-pressed="true">Som</button>
-    <button type="button" id="voiceBtn">Trocar voz</button>
+    <button type="button" id="voiceBtn">Testar voz</button>
     <button type="button" id="copyBtn">Copiar resposta</button>
     <button type="button" id="stopBtn" hidden>Parar</button>
   </div>
@@ -322,7 +333,7 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
   const els = {
     clock: $("clock"), dateLine: $("dateLine"), core: $("core"), coreHit: $("coreHit"),
     stateLabel: $("stateLabel"), stateHint: $("stateHint"), agendaText: $("agendaText"), agendaBtn: $("agendaBtn"),
-    voiceText: $("voiceText"), youLine: $("youLine"), replyLine: $("replyLine"), log: $("log"),
+    voiceText: $("voiceText"), voiceSel: $("voiceSel"), youLine: $("youLine"), replyLine: $("replyLine"), log: $("log"),
     bar: $("bar"), msg: $("msg"), micBtn: $("micBtn"), sendBtn: $("sendBtn"),
     muteBtn: $("muteBtn"), voiceBtn: $("voiceBtn"), copyBtn: $("copyBtn"), stopBtn: $("stopBtn"), hint: $("hint"),
   };
@@ -477,22 +488,37 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
   const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
   let voices = [], voiceIdx = 0, soundOn = store.get("jarvis.sound") !== "off";
   els.muteBtn.setAttribute("aria-pressed", String(soundOn));
+  // Prefer a calm male Portuguese voice, and the higher-quality ("natural", "enhanced") ones first.
+  const MALE = /\b(antonio|antônio|francisco|donato|fabio|fábio|humberto|julio|júlio|nicolau|valerio|valério|daniel|felipe|ricardo|thiago|eduardo|bruno|paulo|rodrigo|diogo|duarte|cristiano|marcos|henrique|male|masculin)/i;
+  const FEMALE = /\b(luciana|francisca|thalita|maria|vit[oó]ria|leila|raquel|yara|brenda|elza|giovanna|manuela|joana|catarina|fernanda|helena|let[ií]cia|camila|in[eê]s|female|feminin)/i;
+  const QUALITY = /(natural|neural|enhanced|premium|aprimorad|network|online)/i;
+  function voiceScore(v) {
+    let s = 0;
+    if (/^pt(-|_)?BR/i.test(v.lang)) s += 4;
+    if (MALE.test(v.name)) s += 10;
+    if (FEMALE.test(v.name)) s -= 10;
+    if (QUALITY.test(v.name)) s += 3;
+    return s;
+  }
+  const voiceLabel = (v) => v.name.replace(/^Microsoft\s+/i, "").replace(/\s*[-–(].*$/, "").trim() + (MALE.test(v.name) ? " · masculina" : FEMALE.test(v.name) ? " · feminina" : "");
   function loadVoices() {
     if (!synth) return;
     const all = synth.getVoices();
-    const pt = all.filter((v) => /^pt(-|_)?BR/i.test(v.lang));
-    const ptAny = all.filter((v) => /^pt/i.test(v.lang));
-    voices = pt.length ? pt : ptAny;
+    voices = all.filter((v) => /^pt/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
     const saved = store.get("jarvis.voice");
     const i = voices.findIndex((v) => v.name === saved);
     voiceIdx = i >= 0 ? i : 0;
+    els.voiceSel.replaceChildren(...voices.map((v, k) => new Option(voiceLabel(v), String(k), false, k === voiceIdx)));
     showVoice();
   }
   function showVoice() {
-    if (!synth) { els.voiceText.textContent = "Este aparelho não fala"; els.voiceBtn.hidden = true; return; }
+    if (!synth) { els.voiceText.textContent = "Este aparelho não fala"; els.voiceText.hidden = false; els.voiceSel.hidden = true; els.voiceBtn.hidden = true; return; }
+    const hasList = voices.length > 1 && soundOn;
+    els.voiceSel.hidden = !hasList;
+    els.voiceText.hidden = hasList;
     const v = voices[voiceIdx];
-    els.voiceText.textContent = !soundOn ? "Sem som" : v ? v.name.replace(/\s*\(.*\)$/, "") : "Voz padrão do aparelho";
-    els.voiceBtn.hidden = voices.length < 2;
+    els.voiceText.textContent = !soundOn ? "Sem som" : v ? voiceLabel(v) : "Voz padrão do aparelho";
+    els.voiceBtn.hidden = !voices.length;
   }
   if (synth) { loadVoices(); synth.addEventListener?.("voiceschanged", loadVoices); }
   else showVoice();
@@ -508,8 +534,8 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
     const u = new SpeechSynthesisUtterance(clean);
     u.lang = "pt-BR";
     if (voices[voiceIdx]) u.voice = voices[voiceIdx];
-    u.rate = 1.02;
-    u.pitch = 0.92;
+    u.rate = 0.96;
+    u.pitch = 0.82;
     u.onstart = () => setState("speaking");
     u.onboundary = () => { bump = 0.5; };
     const done = () => { speakQueue = Math.max(0, speakQueue - 1); if (speakQueue === 0 && !busy) setState("idle"); };
@@ -536,14 +562,23 @@ body[data-state="speaking"] #stateLabel { color: var(--ember); text-shadow: 0 0 
     if (!soundOn) stopSpeaking();
     showVoice();
   });
+  function pickVoice(i) {
+    voiceIdx = i;
+    store.set("jarvis.voice", voices[voiceIdx].name);
+    els.voiceSel.value = String(i);
+    showVoice();
+  }
+  els.voiceSel.addEventListener("change", () => {
+    unlockAudio();
+    pickVoice(Number(els.voiceSel.value) || 0);
+    stopSpeaking();
+    speak("Assim soa melhor, senhor?");
+  });
   els.voiceBtn.addEventListener("click", () => {
     if (!voices.length) return;
     unlockAudio();
-    voiceIdx = (voiceIdx + 1) % voices.length;
-    store.set("jarvis.voice", voices[voiceIdx].name);
-    showVoice();
     stopSpeaking();
-    speak("Assim soa melhor, senhor?");
+    speak("Sistemas em ordem, senhor. Às suas ordens.");
   });
 
   /* ---------- Voice in (speech recognition) ---------- */
