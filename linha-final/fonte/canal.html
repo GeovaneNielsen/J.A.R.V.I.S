@@ -1,0 +1,379 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}</style></head><body><div id="out"></div><script>
+const INK = "#1b1b22";
+const O = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
+let uid = 0;
+function mix(hex, other, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const a = p(hex), b = p(other);
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+const dark = (c, t = 0.24) => mix(c, "#141428", t);
+const light = (c, t = 0.35) => mix(c, "#ffffff", t);
+// Cel-shaded shape: shadow color underneath, base color shifted toward the light (top-left), outline on top.
+function S(tag, attrs, fill, opt = {}) {
+  const id = "c" + uid++;
+  const dx = opt.dx ?? -8, dy = opt.dy ?? -6;
+  const hl = opt.hl ? `<g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${light(fill, 0.45)}" transform="translate(${-dx * 1.6},${-dy * 1.6}) scale(1)" opacity="0"/></g>` : "";
+  return `<clipPath id="${id}"><${tag} ${attrs}/></clipPath>
+    <${tag} ${attrs} fill="${dark(fill)}" stroke="none"/>
+    <g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${fill}" transform="translate(${dx},${dy})"/></g>${hl}
+    <${tag} ${attrs} fill="none"/>`;
+}
+const svg = (vb, inner, bg) => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${bg || ""}<g ${O}>${inner}</g></svg>`;
+function bgCard(vb, color) {
+  const [, , w, h] = vb.split(" ").map(Number);
+  const id = "g" + uid++;
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(color, "#ffffff", 0.82)}"/><stop offset="1" stop-color="${mix(color, "#ffffff", 0.62)}"/></linearGradient></defs>
+    <rect x="-20" y="-20" width="${w + 40}" height="${h + 40}" fill="url(#${id})"/>
+    <circle cx="${w * 0.82}" cy="${h * 0.16}" r="${w * 0.1}" fill="#ffffff" opacity=".5"/>`;
+}
+const shine = (x, y, w = 10, h = 22, r = -20) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w / 2}" fill="#ffffff" opacity=".55" stroke="none" transform="rotate(${r} ${x} ${y})"/>`;
+
+function eyes({ y = 100, look = 0, lid = false, brow = "flat", browColor = INK } = {}) {
+  const brows = {
+    flat: `M70 ${y - 18} Q82 ${y - 23} 92 ${y - 18} M108 ${y - 18} Q118 ${y - 23} 130 ${y - 18}`,
+    worried: `M70 ${y - 16} Q82 ${y - 24} 92 ${y - 24} M108 ${y - 24} Q118 ${y - 24} 130 ${y - 16}`,
+    sharp: `M70 ${y - 22} L92 ${y - 16} M108 ${y - 16} L130 ${y - 22}`,
+    up: `M70 ${y - 20} Q82 ${y - 30} 92 ${y - 22} M108 ${y - 22} Q118 ${y - 30} 130 ${y - 20}`,
+  }[brow];
+  return `<ellipse cx="82" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/><ellipse cx="118" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/>
+    <circle cx="${83 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/><circle cx="${119 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/>
+    <circle cx="${85 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/><circle cx="${121 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/>
+    ${lid ? `<path d="M73 ${y - 4} Q82 ${y - 12} 91 ${y - 4} M109 ${y - 4} Q118 ${y - 12} 127 ${y - 4}" fill="none" stroke-width="3.5"/>` : ""}
+    <path d="${brows}" fill="none" stroke="${browColor}" stroke-width="5"/>`;
+}
+const nose = (skin) => `<path d="M100 104 Q94 116 101 118" fill="none" stroke="${dark(skin, 0.45)}" stroke-width="3"/>`;
+const ears = (skin) => S("ellipse", `cx="50" cy="104" rx="9" ry="12"`, skin) + S("ellipse", `cx="150" cy="104" rx="9" ry="12"`, skin);
+const hand = (cx, cy, skin) => S("circle", `cx="${cx}" cy="${cy}" r="11.5"`, skin) + `<path d="M${cx - 6} ${cy - 2} q-6 -2 -6 4" fill="none" stroke-width="3"/>`;
+const groundShadow = `<ellipse cx="100" cy="332" rx="62" ry="9" fill="${INK}" opacity=".18" stroke="none"/>`;
+
+// Body layout: every character gets its own shape so the silhouette alone identifies them.
+function geom(L = {}) {
+  const g = {
+    cx: 100, feet: 326,
+    torsoW: L.torsoW ?? 84, torsoH: L.torsoH ?? 124, legH: L.legH ?? 60, legW: L.legW ?? 24, legGap: L.legGap ?? 8,
+    armW: L.armW ?? 24, armH: L.armH ?? 88, headS: L.headS ?? 1, headDX: L.headDX ?? 0, headDY: L.headDY ?? 0,
+  };
+  g.legTop = g.feet - 6 - g.legH;
+  g.bottom = g.legTop + 10;
+  g.top = g.bottom - g.torsoH;
+  g.x = g.cx - g.torsoW / 2;
+  g.right = g.x + g.torsoW;
+  g.shoulder = g.top + 12;
+  g.armLX = g.x - g.armW + 4;
+  g.armRX = g.right - 4;
+  g.handY = g.shoulder + g.armH + 4;
+  g.handLX = g.armLX + g.armW / 2;
+  g.handRX = g.armRX + g.armW / 2;
+  g.headCX = g.cx + g.headDX;
+  g.headCY = g.top - 8 - 52 * g.headS + 10 + g.headDY;
+  g.legLX = g.cx - g.legGap / 2 - g.legW;
+  g.legRX = g.cx + g.legGap / 2;
+  return g;
+}
+const call = (v, g) => (typeof v === "function" ? v(g) : v || "");
+
+function person(o) {
+  const g = geom(o.L);
+  const { skin, shirt, pants, shoes = "#2b2b33" } = o;
+  const sl = o.sleeve || shirt;
+  const rx = Math.min(24, g.torsoW / 3);
+  const torsoShape = o.torsoShape ? o.torsoShape(g) : S("rect", `x="${g.x}" y="${g.top}" width="${g.torsoW}" height="${g.torsoH}" rx="${rx}"`, shirt);
+  const defaultArms = S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handLX, g.handY, skin)
+    + S("rect", `x="${g.armRX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handRX, g.handY, skin);
+  const defaultLegs = S("rect", `x="${g.legLX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants)
+    + S("rect", `x="${g.legRX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants);
+  const shoe = (lx, w) => S("path", `d="M${lx - 10} ${g.feet} Q${lx - 10} ${g.feet - 12} ${lx + 4} ${g.feet - 12} L${lx + w - 2} ${g.feet - 12} Q${lx + w + 12} ${g.feet - 12} ${lx + w + 12} ${g.feet} Z"`, shoes);
+  const headT = `translate(${g.headCX - 100 * g.headS} ${g.headCY - 98 * g.headS}) scale(${g.headS})`;
+  const headPart = `<g transform="${headT}">
+      ${call(o.headBack, g)}
+      ${o.head === false ? "" : ears(skin) + S("circle", `cx="100" cy="98" r="52"`, skin)}
+      ${o.head === false ? "" : `<circle cx="70" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/><circle cx="130" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/>`}
+      ${call(o.hair, g)}${call(o.face, g)}</g>`;
+  const lean = o.lean || 0, sc = o.scale || 1;
+  return `<ellipse cx="100" cy="332" rx="${62 * sc + (o.L?.torsoW ?? 84) / 6 - 14}" ry="9" fill="${INK}" opacity=".18" stroke="none"/>
+    <g transform="translate(100 ${g.feet}) rotate(${lean}) scale(${sc}) translate(-100 ${-g.feet})">
+    ${call(o.back, g)}
+    ${o.legs ? o.legs(g) : defaultLegs}
+    ${shoe(g.legLX, g.legW)}${shoe(g.legRX, g.legW)}
+    <path d="M${g.legLX - 10} ${g.feet} L${g.legLX + g.legW + 12} ${g.feet} M${g.legRX - 10} ${g.feet} L${g.legRX + g.legW + 12} ${g.feet}" fill="none" stroke="${light(shoes, 0.5)}" stroke-width="3"/>
+    ${torsoShape}
+    ${call(o.torso, g)}
+    ${o.arms ? o.arms(g) : defaultArms}
+    ${o.head === false ? "" : S("rect", `x="${g.headCX - 10}" y="${g.top - 14}" width="20" height="18" rx="4"`, skin, { dx: -4, dy: -2 })}
+    ${headPart}
+    ${call(o.front, g)}
+    </g>`;
+}
+
+const chars = [
+  { name: "Seu Valdir", role: "Motorista · largo e barrigudo", color: "#2f5fb3", art: (bg) => svg("0 0 200 350", person({
+      skin: "#e0a878", shirt: "#8fb6e8", pants: "#2b3550",
+      L: { torsoW: 124, torsoH: 118, legH: 48, legW: 30, legGap: 14, armW: 28, armH: 80, headS: 0.94 },
+      torsoShape: (g) => S("path", `d="M${g.x + 14} ${g.top} L${g.right - 14} ${g.top} Q${g.right + 4} ${g.top + 6} ${g.right + 6} ${g.top + 50} Q${g.right + 10} ${g.bottom} ${g.cx} ${g.bottom + 4} Q${g.x - 10} ${g.bottom} ${g.x - 6} ${g.top + 50} Q${g.x - 4} ${g.top + 6} ${g.x + 14} ${g.top} Z"`, "#8fb6e8"),
+      torso: (g) => `<path d="M${g.cx} ${g.top + 4} L${g.cx} ${g.bottom - 2}" fill="none" stroke-width="3"/><path d="M${g.cx - 20} ${g.top} L${g.cx} ${g.top + 16} L${g.cx + 20} ${g.top}" fill="#f4f4f4" stroke-width="3"/>
+              ${S("rect", `x="${g.cx + 18}" y="${g.top + 26}" width="24" height="15" rx="2"`, "#ffd34d", { dx: -3, dy: -2 })}
+              ${[0, 1, 2].map((i) => `<circle cx="${g.cx - 7}" cy="${g.top + 34 + i * 22}" r="3" fill="${INK}"/>`).join("")}
+              ${S("rect", `x="${g.x - 4}" y="${g.bottom - 26}" width="${g.torsoW + 8}" height="13" rx="4"`, "#3a2a20", { dx: -3, dy: -2 })}${S("rect", `x="${g.cx - 9}" y="${g.bottom - 28}" width="18" height="17" rx="3"`, "#c9c9cf", { dx: -2, dy: -2 })}`,
+      hair: `<path d="M49 100 Q46 76 60 68 L66 106 Z" fill="#b0b0b8"/><path d="M151 100 Q154 76 140 68 L134 106 Z" fill="#b0b0b8"/>
+             ${S("path", `d="M48 84 Q50 36 100 34 Q150 36 152 84 Z"`, "#2f5fb3")}${S("path", `d="M96 82 L170 82 Q178 94 162 98 L96 94 Z"`, "#244a8c", { dx: -3, dy: -3 })}
+             ${S("rect", `x="88" y="50" width="24" height="16" rx="3"`, "#ffd34d", { dx: -3, dy: -2 })}`,
+      face: `${eyes({ y: 104, lid: true, brow: "flat", browColor: "#8a8a92" })}${nose("#e0a878")}
+             ${S("path", `d="M74 124 Q88 110 100 119 Q112 110 126 124 Q112 132 100 126 Q88 132 74 124 Z"`, "#7a6a5e", { dx: -2, dy: -3 })}
+             <path d="M90 138 Q100 142 110 138" fill="none" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Jé", role: "Entregadora · magra e sempre para a frente", color: "#d8322f", art: (bg) => svg("0 0 200 350", person({
+      skin: "#8d5a3b", shirt: "#2a2f3a", pants: "#3e5a8a", shoes: "#f4f4f4", lean: 7,
+      L: { torsoW: 62, torsoH: 112, legH: 82, legW: 20, legGap: 10, armW: 20, armH: 90, headS: 0.9, headDX: 6 },
+      back: (g) => `${S("rect", `x="${g.x - 34}" y="${g.top - 16}" width="${g.torsoW + 22}" height="104" rx="14"`, "#d8322f")}<path d="M${g.x - 34} ${g.top + 10} L${g.x - 12 + g.torsoW} ${g.top + 10}" fill="none" stroke-width="3"/>
+             <rect x="${g.x - 26}" y="${g.top + 56}" width="${g.torsoW + 6}" height="10" fill="#f4f4f4" stroke-width="2.5"/>`,
+      torso: (g) => `<path d="M${g.x + 4} ${g.top + 14} L${g.cx - 4} ${g.bottom - 30} M${g.right - 4} ${g.top + 14} L${g.cx + 4} ${g.bottom - 30}" fill="none" stroke="#111" stroke-width="7"/>
+              <path d="M${g.cx} ${g.top + 4} L${g.cx} ${g.bottom - 4}" fill="none" stroke="#5a6070" stroke-width="3"/><rect x="${g.x + 4}" y="${g.bottom - 22}" width="${g.torsoW - 8}" height="6" fill="#ffd34d" stroke="none"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="10"`, "#2a2f3a") + hand(g.handLX, g.handY, "#8d5a3b")
+            + S("rect", `x="${g.armRX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH - 34}" rx="10"`, "#2a2f3a", { dx: -4, dy: -3 })
+            + S("rect", `x="${g.armRX}" y="${g.shoulder + g.armH - 52}" width="40" height="${g.armW}" rx="10"`, "#2a2f3a", { dx: -4, dy: -3 }) + hand(g.armRX + 44, g.shoulder + g.armH - 42, "#8d5a3b"),
+      hair: `${S("path", `d="M146 104 Q190 120 178 172 Q162 138 142 120 Z"`, "#2a1d16", { dx: -3, dy: -3 })}
+             ${S("path", `d="M44 100 Q42 38 100 38 Q158 38 156 100 Z"`, "#d8322f")}${S("rect", `x="54" y="78" width="92" height="17" rx="8"`, "#2a2f3a", { dx: -3, dy: -2 })}
+             ${shine(62, 54, 9, 20, -40)}`,
+      face: `${eyes({ y: 110, look: 3, brow: "sharp" })}${nose("#8d5a3b")}<path d="M86 130 Q104 138 118 124" fill="none" stroke-width="4"/>`,
+    }), bg) },
+  { name: "Professor Otávio", role: "Químico · alto, magro e curvado", color: "#6b7d3a", art: (bg) => svg("0 0 200 350", person({
+      skin: "#f1c9a0", shirt: "#6b7d3a", pants: "#4a4a52", shoes: "#6b3a1f",
+      L: { torsoW: 56, torsoH: 122, legH: 96, legW: 18, legGap: 6, armW: 18, armH: 104, headS: 0.84, headDX: 14, headDY: 16 },
+      torsoShape: (g) => S("path", `d="M${g.x + 6} ${g.top + 4} Q${g.x + 30} ${g.top - 8} ${g.right + 6} ${g.top + 10} Q${g.right + 2} ${g.top + 60} ${g.right} ${g.bottom} L${g.x} ${g.bottom} Q${g.x - 6} ${g.top + 50} ${g.x + 6} ${g.top + 4} Z"`, "#6b7d3a"),
+      torso: (g) => `<path d="M${g.cx - 10} ${g.top + 2} L${g.cx + 2} ${g.top + 44} L${g.cx + 14} ${g.top + 4} Z" fill="#f4f4f4" stroke-width="3"/><path d="M${g.cx - 1} ${g.top + 10} L${g.cx + 2} ${g.top + 42} L${g.cx + 5} ${g.top + 10} Z" fill="#a33a3a" stroke-width="2.5"/>
+              <circle cx="${g.cx + 2}" cy="${g.top + 64}" r="3.5" fill="${INK}"/><circle cx="${g.cx + 2}" cy="${g.top + 88}" r="3.5" fill="${INK}"/>
+              ${S("rect", `x="${g.right - 22}" y="${g.top + 26}" width="16" height="14" rx="2"`, "#5a6b2e", { dx: -2, dy: -2 })}<path d="M${g.right - 17} ${g.top + 22} L${g.right - 17} ${g.top + 32} M${g.right - 11} ${g.top + 20} L${g.right - 11} ${g.top + 32}" fill="none" stroke-width="2.5"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="9"`, "#6b7d3a") + hand(g.handLX, g.handY, "#f1c9a0")
+            + S("rect", `x="${g.armRX + 4}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH - 6}" rx="9"`, "#6b7d3a")
+            + S("rect", `x="${g.armRX - 6}" y="${g.handY - 2}" width="46" height="32" rx="5"`, "#7a4a24") + `<path d="M${g.armRX - 6} ${g.handY + 10} L${g.armRX + 40} ${g.handY + 10}" fill="none" stroke-width="3"/>`
+            + `<rect x="${g.armRX + 14}" y="${g.handY + 6}" width="8" height="8" fill="#ffd34d" stroke-width="2"/>` + hand(g.armRX + 13, g.handY - 2, "#f1c9a0"),
+      hair: `${S("path", `d="M50 92 Q50 40 100 40 Q150 40 150 92 Q132 62 100 66 Q68 62 50 92 Z"`, "#6b4a2f")}
+             ${S("path", `d="M148 66 Q158 80 150 90 Q140 84 148 66 Z"`, "#7cc8ff", { dx: -2, dy: -2 })}`,
+      face: `${eyes({ y: 102, look: -1, brow: "worried" })}
+             <circle cx="82" cy="102" r="15" fill="#ffffff" fill-opacity=".25" stroke-width="3.5"/><circle cx="118" cy="102" r="15" fill="#ffffff" fill-opacity=".25" stroke-width="3.5"/>
+             <path d="M97 102 L103 102 M67 100 L52 96 M133 100 L148 96" fill="none" stroke-width="3"/>${nose("#f1c9a0")}
+             <path d="M84 130 q4 -5 8 0 t8 0 t8 0 t8 0" fill="none" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Dona Cida", role: "Vende bolo de pote · baixinha e redonda", color: "#f07fb0", art: (bg) => svg("0 0 200 350", person({
+      skin: "#c68a5e", shirt: "#8a5aa8", pants: "#8a5aa8", shoes: "#5a3a2a",
+      L: { torsoW: 108, torsoH: 96, legH: 26, legW: 20, legGap: 18, armW: 22, armH: 62, headS: 0.98 },
+      back: (g) => `${S("rect", `x="${g.x - 44}" y="${g.bottom - 58}" width="40" height="58" rx="5"`, "#3a7bd5")}<path d="M${g.x - 44} ${g.bottom - 38} L${g.x - 4} ${g.bottom - 38} M${g.x - 44} ${g.bottom - 18} L${g.x - 4} ${g.bottom - 18} M${g.x - 30} ${g.bottom - 58} L${g.x - 30} ${g.bottom} M${g.x - 16} ${g.bottom - 58} L${g.x - 16} ${g.bottom}" fill="none" stroke-width="2.5"/>
+             ${S("circle", `cx="${g.x - 34}" cy="${g.feet - 8}" r="10"`, "#2b2b33", { dx: -3, dy: -3 })}${S("circle", `cx="${g.x - 12}" cy="${g.feet - 8}" r="10"`, "#2b2b33", { dx: -3, dy: -3 })}<path d="M${g.x - 10} ${g.bottom - 56} L${g.x - 2} ${g.handY - 4}" fill="none" stroke-width="5"/>
+             ${S("rect", `x="${g.x - 40}" y="${g.bottom - 76}" width="30" height="20" rx="4"`, "#f4e2c0", { dx: -2, dy: -2 })}<path d="M${g.x - 40} ${g.bottom - 68} L${g.x - 10} ${g.bottom - 68}" fill="none" stroke="#6b3a1f" stroke-width="4"/>`,
+      torsoShape: (g) => S("path", `d="M${g.x + 20} ${g.top} L${g.right - 20} ${g.top} Q${g.right + 6} ${g.top + 10} ${g.right + 10} ${g.bottom - 10} Q${g.right + 12} ${g.bottom + 6} ${g.cx} ${g.bottom + 6} Q${g.x - 12} ${g.bottom + 6} ${g.x - 10} ${g.bottom - 10} Q${g.x - 6} ${g.top + 10} ${g.x + 20} ${g.top} Z"`, "#8a5aa8"),
+      torso: (g) => `${S("path", `d="M${g.x - 4} ${g.top + 10} Q${g.cx} ${g.top - 12} ${g.right + 4} ${g.top + 10} L${g.cx} ${g.top + 66} Z"`, "#f07fb0")}
+              ${[[-26, 14, "#fff"], [18, 10, "#ffd34d"], [0, 38, "#fff"], [36, 18, "#fff"], [-40, 10, "#ffd34d"], [-6, 8, "#fff"]].map(([dx, dy, c]) => `<circle cx="${g.cx + dx}" cy="${g.top + dy}" r="5.5" fill="${c}" stroke-width="2"/><circle cx="${g.cx + dx}" cy="${g.top + dy}" r="1.8" fill="#e05a90" stroke="none"/>`).join("")}
+              <path d="M${g.x + 6} ${g.bottom - 8} Q${g.cx} ${g.bottom + 2} ${g.right - 6} ${g.bottom - 8}" fill="none" stroke="#6a3a88" stroke-width="3"/>`,
+      headBack: S("circle", `cx="100" cy="42" r="20"`, "#c9c9cf", { dx: -4, dy: -3 }),
+      hair: `${S("path", `d="M46 98 Q46 50 100 50 Q154 50 154 98 Q142 70 100 70 Q58 70 46 98 Z"`, "#c9c9cf")}<path d="M70 62 Q86 56 100 58" fill="none" stroke="#9a9aa3" stroke-width="3"/>`,
+      face: `${eyes({ y: 104, brow: "up", browColor: "#9a9aa3" })}<circle cx="82" cy="104" r="13" fill="none" stroke-width="3"/><circle cx="118" cy="104" r="13" fill="none" stroke-width="3"/><path d="M95 104 L105 104" fill="none" stroke-width="3"/>
+             ${nose("#c68a5e")}<path d="M82 126 Q100 144 118 126 Q100 134 82 126 Z" fill="#7a2e2e" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Kauã", role: "Quer viralizar · pequeno e cabeçudo", color: "#f2c230", art: (bg) => svg("0 0 200 350", person({
+      skin: "#a8704a", shirt: "#f2c230", pants: "#3e5a8a", shoes: "#f4f4f4",
+      L: { torsoW: 70, torsoH: 86, legH: 50, legW: 20, legGap: 8, armW: 20, armH: 66, headS: 1.16 },
+      torso: (g) => `${S("rect", `x="${g.cx - 22}" y="${g.bottom - 40}" width="44" height="24" rx="8"`, "#e0ad1c", { dx: -3, dy: -2 })}<path d="M${g.cx - 9} ${g.top + 4} L${g.cx - 10} ${g.top + 30} M${g.cx + 9} ${g.top + 4} L${g.cx + 10} ${g.top + 30}" fill="none" stroke-width="3"/>
+              <circle cx="${g.cx - 10}" cy="${g.top + 32}" r="3" fill="${INK}"/><circle cx="${g.cx + 10}" cy="${g.top + 32}" r="3" fill="${INK}"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="10"`, "#f2c230") + hand(g.handLX, g.handY, "#a8704a"),
+      headBack: S("path", `d="M38 124 Q32 36 100 32 Q168 36 162 124 Z"`, "#f2c230"),
+      hair: `${S("path", `d="M52 84 Q64 46 104 48 Q144 48 150 88 Q126 70 106 74 Q84 66 52 84 Z"`, "#1b1b22", { dx: -3, dy: -3 })}<path d="M80 60 Q96 54 110 58" fill="none" stroke="#4a4a58" stroke-width="3"/>`,
+      face: `${eyes({ y: 104, look: 2, brow: "up" })}${nose("#a8704a")}<path d="M84 122 Q100 146 116 122 Z" fill="#7a2e2e" stroke-width="3.5"/><path d="M88 124 L112 124" fill="none" stroke="#fff" stroke-width="4"/>`,
+      front: (g) => `${S("rect", `x="${g.armRX + 6}" y="${g.shoulder - 58}" width="20" height="70" rx="10"`, "#f2c230")}${hand(g.armRX + 16, g.shoulder - 58, "#a8704a")}
+              ${S("rect", `x="${g.armRX + 2}" y="${g.shoulder - 112}" width="32" height="54" rx="7"`, "#1b1b22", { dx: -3, dy: -3 })}<rect x="${g.armRX + 7}" y="${g.shoulder - 105}" width="22" height="38" rx="3" fill="#3a5d7a" stroke-width="2"/>
+              <rect x="${g.armRX + 10}" y="${g.shoulder - 100}" width="15" height="8" rx="2" fill="#f4f4f4" stroke-width="1.5"/><rect x="${g.armRX + 11}" y="${g.shoulder - 99}" width="3" height="6" fill="#ff4d4d" stroke="none"/>
+              <circle cx="${g.armRX + 38}" cy="${g.shoulder - 108}" r="5" fill="#ff4d4d" stroke-width="2"/>`,
+    }), bg) },
+  { name: "Rex", role: "Vira-lata caramelo · alarme de zumbi", color: "#d29a52", art: (bg) => svg("0 0 200 350", `
+      <ellipse cx="100" cy="326" rx="70" ry="8" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("path", `d="M46 254 Q18 220 32 200 Q44 228 60 244 Z"`, "#d29a52", { dx: -3, dy: -3 })}
+      ${S("rect", `x="56" y="274" width="17" height="48" rx="7"`, "#c08440")}${S("rect", `x="82" y="280" width="17" height="42" rx="7"`, "#b07434")}
+      ${S("rect", `x="114" y="280" width="17" height="42" rx="7"`, "#b07434")}${S("rect", `x="138" y="274" width="17" height="48" rx="7"`, "#c08440")}
+      <path d="M58 322 L74 322 M138 322 L156 322" fill="none" stroke="#f4e2c0" stroke-width="3"/>
+      ${S("ellipse", `cx="100" cy="262" rx="62" ry="34"`, "#d29a52")}
+      <path d="M78 276 Q100 290 122 276" fill="none" stroke="#ecc38a" stroke-width="6"/>
+      ${S("path", `d="M120 238 L158 244 L140 270 Z"`, "#d8322f", { dx: -3, dy: -3 })}<circle cx="138" cy="248" r="2.5" fill="#fff" stroke="none"/><circle cx="146" cy="254" r="2.5" fill="#fff" stroke="none"/>
+      ${S("circle", `cx="150" cy="218" r="33"`, "#d29a52")}
+      ${S("path", `d="M126 196 Q114 222 130 236 Q140 214 138 196 Z"`, "#a86f32", { dx: -2, dy: -2 })}
+      ${S("ellipse", `cx="176" cy="230" rx="17" ry="12"`, "#ecc38a", { dx: -3, dy: -2 })}<circle cx="191" cy="225" r="6" fill="${INK}"/><circle cx="189" cy="223" r="1.8" fill="#fff" stroke="none"/>
+      <ellipse cx="154" cy="210" rx="6" ry="7" fill="#fff" stroke-width="3"/><circle cx="156" cy="211" r="3.8" fill="${INK}" stroke="none"/>
+      <path d="M144 196 Q154 192 162 198" fill="none" stroke-width="4"/>
+      ${S("path", `d="M174 242 Q180 258 188 244 Z"`, "#ff8fa3", { dx: -2, dy: -2 })}`, bg) },
+  { name: "O Passageiro do Fundo", role: "Nunca fala · ombros largos, capuz", color: "#6c6f78", art: (bg) => svg("0 0 200 350", person({
+      skin: "#c9b7a6", shirt: "#6c6f78", pants: "#3a3c44", head: false,
+      L: { torsoW: 96, torsoH: 120, legH: 66, legW: 22, legGap: 12, armW: 24, armH: 96, headS: 1 },
+      torsoShape: (g) => S("path", `d="M${g.x - 10} ${g.top + 18} Q${g.x - 8} ${g.top} ${g.x + 16} ${g.top} L${g.right - 16} ${g.top} Q${g.right + 8} ${g.top} ${g.right + 10} ${g.top + 18} L${g.right - 6} ${g.bottom} L${g.x + 6} ${g.bottom} Z"`, "#6c6f78"),
+      torso: (g) => `<path d="M${g.cx - 14} ${g.top + 4} L${g.cx - 14} ${g.top + 50} M${g.cx + 14} ${g.top + 4} L${g.cx + 14} ${g.top + 50}" fill="none" stroke-width="3"/>${S("rect", `x="${g.cx - 26}" y="${g.bottom - 46}" width="52" height="28" rx="9"`, "#5c5f68", { dx: -3, dy: -2 })}`,
+      arms: (g) => S("rect", `x="${g.armLX - 8}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH}" rx="12"`, "#6c6f78") + S("rect", `x="${g.armLX - 11}" y="${g.shoulder + g.armH - 36}" width="30" height="18" rx="3"`, "#f4f4f4", { dx: -2, dy: -2 }) + `<path d="M${g.armLX - 8} ${g.shoulder + g.armH - 30} L${g.armLX + 16} ${g.shoulder + g.armH - 24}" fill="none" stroke-width="2"/>` + hand(g.handLX - 8, g.handY + 4, "#b9c4a6")
+            + S("rect", `x="${g.armRX + 8}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH}" rx="12"`, "#6c6f78") + hand(g.handRX + 8, g.handY + 4, "#c9b7a6"),
+      hair: `${S("path", `d="M40 124 Q36 30 100 28 Q164 30 160 124 Q152 156 100 158 Q48 156 40 124 Z"`, "#6c6f78")}
+             <ellipse cx="100" cy="110" rx="35" ry="40" fill="#22242b" stroke-width="4"/><path d="M68 92 Q100 70 132 92" fill="none" stroke="#3a3c44" stroke-width="5"/>`,
+      face: `<ellipse cx="88" cy="106" rx="4" ry="3" fill="#e9f0ff" stroke="none"/><ellipse cx="112" cy="106" rx="4" ry="3" fill="#e9f0ff" stroke="none"/>`,
+    }), bg) },
+  { name: "Lerdo comum", role: "O zumbi de todo dia · torto e arrastado", color: "#9bb08a", art: (bg) => svg("0 0 200 350", person({
+      skin: "#9bb08a", shirt: "#a07a5a", pants: "#5a5a64", shoes: "#4a3a30", lean: -5,
+      L: { torsoW: 78, torsoH: 116, legH: 62, legW: 22, legGap: 10, armW: 22, armH: 88, headS: 0.96, headDX: 10, headDY: 10 },
+      torso: (g) => `<path d="M${g.x} ${g.bottom - 20} L${g.x + 12} ${g.bottom - 8} L${g.x + 24} ${g.bottom - 22} L${g.x + 36} ${g.bottom - 6} L${g.x + 48} ${g.bottom - 22} L${g.x + 60} ${g.bottom - 6} L${g.x + 72} ${g.bottom - 20} L${g.right} ${g.bottom} L${g.x} ${g.bottom} Z" fill="${mix("#9bb08a", "#ffffff", 0.66)}" stroke="none"/>
+              <path d="M${g.x} ${g.bottom - 20} L${g.x + 12} ${g.bottom - 8} L${g.x + 24} ${g.bottom - 22} L${g.x + 36} ${g.bottom - 6} L${g.x + 48} ${g.bottom - 22} L${g.x + 60} ${g.bottom - 6} L${g.x + 72} ${g.bottom - 20}" fill="none" stroke-width="3"/>
+              <path d="M${g.x + 18} ${g.top + 28} l10 8 M${g.x + 52} ${g.top + 52} l8 -10" fill="none" stroke-width="3"/><circle cx="${g.x + 60}" cy="${g.top + 76}" r="7" fill="${mix("#a07a5a", "#141428", 0.3)}" stroke-width="3"/>`,
+      legs: (g) => S("rect", `x="${g.legLX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, "#5a5a64") + S("rect", `x="${g.legRX}" y="${g.legTop + 6}" width="${g.legW}" height="${g.legH - 6}" rx="8"`, "#5a5a64") + `<path d="M${g.legRX} ${g.legTop + 40} L${g.legRX + 14} ${g.legTop + 44} L${g.legRX + 8} ${g.legTop + 52}" fill="none" stroke-width="3"/>`,
+      arms: (g) => S("rect", `x="${g.cx - 4}" y="${g.shoulder - 2}" width="96" height="${g.armW}" rx="11"`, "#a07a5a") + hand(g.cx + 96, g.shoulder + 9, "#9bb08a")
+            + S("rect", `x="${g.cx - 4}" y="${g.shoulder + 30}" width="84" height="${g.armW}" rx="11"`, "#a07a5a") + hand(g.cx + 84, g.shoulder + 41, "#9bb08a"),
+      hair: `${S("path", `d="M54 80 L62 52 L74 68 L84 44 L96 64 L108 42 L118 64 L132 48 L138 70 L150 62 L148 84 Q100 62 54 80 Z"`, "#3a3a30", { dx: -3, dy: -3 })}`,
+      face: `<ellipse cx="82" cy="100" rx="11" ry="12" fill="#f4f8ec" stroke-width="3.5"/><ellipse cx="118" cy="102" rx="10" ry="11" fill="#f4f8ec" stroke-width="3.5"/>
+             <circle cx="84" cy="102" r="2" fill="#9aa48e" stroke="none"/><circle cx="118" cy="104" r="2" fill="#9aa48e" stroke="none"/>
+             <path d="M70 82 L92 88 M108 88 L130 84" fill="none" stroke-width="4"/>${nose("#9bb08a")}
+             <path d="M80 130 L88 124 L96 132 L104 124 L112 132 L120 126" fill="none" stroke-width="3.5"/><path d="M66 116 l8 4 M128 120 l6 6" fill="none" stroke="${dark("#9bb08a", 0.4)}" stroke-width="3"/>`,
+    }), bg) },
+];
+
+const items = [
+  { name: "A Lata", role: "O ônibus · base móvel do Seu Valdir", wide: true, color: "#f0a020", art: (bg) => svg("0 0 540 230", `
+      <ellipse cx="270" cy="206" rx="250" ry="10" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="190" y="20" width="110" height="20" rx="6"`, "#c9c9cf", { dx: -3, dy: -3 })}
+      ${S("path", `d="M20 52 Q20 36 38 36 L486 36 Q514 36 518 64 L524 150 Q524 168 506 168 L20 168 Z"`, "#f0a020")}
+      <rect x="20" y="130" width="504" height="16" fill="#2f5fb3" stroke="none"/><path d="M20 130 L524 130 M20 146 L524 146" fill="none" stroke-width="3"/>
+      ${[40, 116, 192, 268].map((x, i) => `${S("rect", `x="${x}" y="56" width="66" height="54" rx="6"`, "#3a5d7a", { dx: 3, dy: 3 })}
+        <path d="M${x + 10} 102 L${x + 32} 62" fill="none" stroke="#9fc6e4" stroke-width="5" opacity=".8"/>
+        ${i < 2 ? `<path d="M${x + 13} 56 L${x + 13} 110 M${x + 26} 56 L${x + 26} 110 M${x + 39} 56 L${x + 39} 110 M${x + 52} 56 L${x + 52} 110" fill="none" stroke="#9a9aa3" stroke-width="4"/><path d="M${x} 83 L${x + 66} 83" fill="none" stroke="#9a9aa3" stroke-width="4"/>` : ""}`).join("")}
+      ${S("rect", `x="350" y="54" width="50" height="108" rx="5"`, "#3a5d7a", { dx: 3, dy: 3 })}<path d="M375 54 L375 162" fill="none" stroke-width="3"/><path d="M358 140 L368 70 M384 140 L394 70" fill="none" stroke="#9fc6e4" stroke-width="4" opacity=".7"/>
+      ${S("path", `d="M420 54 L496 54 Q508 54 510 68 L514 118 L420 118 Z"`, "#7fb2d6", { dx: 3, dy: 3 })}<path d="M440 112 L470 60 M462 112 L486 72" fill="none" stroke="#e8f4ff" stroke-width="6" opacity=".8"/>
+      <path d="M492 112 L470 96" fill="none" stroke-width="4"/>
+      ${S("rect", `x="306" y="10" width="216" height="30" rx="6"`, "#1b1b22", { dx: -2, dy: -2 })}
+      <text x="414" y="31" fill="#ffd34d" stroke="none" font-size="16" font-weight="bold" text-anchor="middle" font-family="DejaVu Sans Mono, monospace">13 CIRCULAR NOTURNO</text>
+      ${S("rect", `x="510" y="68" width="16" height="30" rx="4"`, "#2b2b33", { dx: -2, dy: -2 })}
+      ${S("rect", `x="504" y="128" width="22" height="16" rx="4"`, "#ffe98a", { dx: -2, dy: -2 })}<path d="M528 136 L540 132 M528 140 L540 144" fill="none" stroke="#ffd34d" stroke-width="3"/>
+      ${S("rect", `x="14" y="128" width="10" height="16" rx="3"`, "#d8322f", { dx: -2, dy: -2 })}
+      <path d="M70 168 Q70 132 110 132 Q150 132 150 168 M380 168 Q380 132 420 132 Q460 132 460 168" fill="#1b1b22" stroke="none"/>
+      ${[110, 420].map((cx) => `${S("circle", `cx="${cx}" cy="172" r="30"`, "#2b2b33", { dx: -4, dy: -4 })}${S("circle", `cx="${cx}" cy="172" r="13"`, "#c9c9cf", { dx: -2, dy: -2 })}
+        ${[0, 72, 144, 216, 288].map((a) => `<circle cx="${cx + 7 * Math.cos(a * Math.PI / 180)}" cy="${172 + 7 * Math.sin(a * Math.PI / 180)}" r="1.8" fill="${INK}" stroke="none"/>`).join("")}`).join("")}
+      <path d="M200 150 L230 150 M240 150 L260 150" fill="none" stroke="${dark("#f0a020", 0.35)}" stroke-width="3"/>`, bg) },
+  { name: "Extintor", role: "Seu Valdir · dura três usos", color: "#d8322f", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="118" cy="204" rx="50" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="86" y="56" width="64" height="142" rx="24"`, "#d8322f")}${shine(100, 74, 9, 44, 0)}
+      ${S("rect", `x="96" y="104" width="44" height="50" rx="4"`, "#f4f4f4", { dx: -2, dy: -2 })}<path d="M104 118 L132 118 M104 128 L128 128 M104 138 L124 138" fill="none" stroke-width="2.5"/>
+      ${S("rect", `x="102" y="30" width="32" height="28" rx="5"`, "#a3a3ab", { dx: -3, dy: -3 })}<path d="M120 30 L156 20" fill="none" stroke-width="7"/>
+      ${S("circle", `cx="146" cy="44" r="10"`, "#f4f4f4", { dx: -2, dy: -2 })}<path d="M146 44 L151 39" fill="none" stroke="#d8322f" stroke-width="2.5"/>
+      <path d="M102 42 Q58 42 54 92 Q52 124 70 132" fill="none" stroke-width="10"/><path d="M102 42 Q58 42 54 92 Q52 124 70 132" fill="none" stroke="#3a3a44" stroke-width="5"/>
+      ${S("path", `d="M64 128 L80 138 L74 150 L58 140 Z"`, "#2b2b33", { dx: -2, dy: -2 })}`, bg) },
+  { name: "Mochila térmica", role: "Jé · escudo e despensa", color: "#d8322f", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="204" rx="78" ry="8" fill="${INK}" opacity=".18" stroke="none"/>
+      <path d="M66 54 Q66 28 92 28 L148 28 Q174 28 174 54" fill="none" stroke-width="10"/><path d="M66 54 Q66 28 92 28 L148 28 Q174 28 174 54" fill="none" stroke="#3a3a44" stroke-width="4"/>
+      ${S("rect", `x="46" y="48" width="148" height="148" rx="16"`, "#d8322f")}
+      <path d="M46 84 L194 84" fill="none" stroke-width="3"/><path d="M60 84 Q60 70 74 70 L166 70 Q180 70 180 84" fill="none" stroke="#a82420" stroke-width="3"/>
+      ${S("rect", `x="108" y="92" width="24" height="14" rx="4"`, "#2a2f3a", { dx: -2, dy: -2 })}
+      <rect x="64" y="146" width="112" height="16" fill="#f4f4f4" stroke-width="3"/><rect x="64" y="146" width="112" height="16" fill="url(#none)" stroke="none"/>
+      <path d="M72 146 L80 162 M92 146 L100 162 M112 146 L120 162 M132 146 L140 162 M152 146 L160 162" fill="none" stroke="#c9c9cf" stroke-width="3"/>
+      ${shine(60, 104, 8, 30, 0)}`, bg) },
+  { name: "Guarda-chuva", role: "Professor Otávio · quebra na hora errada", color: "#3a5d7a", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="60" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("path", `d="M24 104 Q120 -6 216 104 Q200 90 184 104 Q168 90 152 104 Q136 90 120 104 Q104 90 88 104 Q72 90 56 104 Q40 90 24 104 Z"`, "#2a2f3a", { dx: -6, dy: -6 })}
+      <path d="M120 32 Q88 60 56 104 M120 32 Q104 64 88 104 M120 32 L120 104 M120 32 Q136 64 152 104 M120 32 Q152 60 184 104" fill="none" stroke="#4a5060" stroke-width="3"/>
+      <path d="M60 70 Q86 40 112 36" fill="none" stroke="#6a7488" stroke-width="5" opacity=".9"/>
+      <path d="M120 104 L120 178" fill="none" stroke-width="7"/><path d="M120 104 L120 178" fill="none" stroke="#a3a3ab" stroke-width="3"/>
+      ${S("path", `d="M114 176 L126 176 L126 186 Q126 202 108 202 Q90 202 90 186 L90 180 L100 180 L100 186 Q100 192 108 192 Q114 192 114 186 Z"`, "#a86f32", { dx: -2, dy: -2 })}
+      <path d="M120 32 L120 14" fill="none" stroke-width="5"/>
+      <path d="M176 112 l10 10 m0 -10 l-10 10" fill="none" stroke="#d8322f" stroke-width="3"/>`, bg) },
+  { name: "Bomba de fumaça", role: "Professor Otávio · erra uma em cada três", color: "#7fe0a8", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="60" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("circle", `cx="94" cy="44" r="18"`, "#c9c9cf", { dx: -3, dy: -3 })}${S("circle", `cx="124" cy="30" r="23"`, "#dedee4", { dx: -3, dy: -3 })}${S("circle", `cx="152" cy="46" r="16"`, "#c9c9cf", { dx: -3, dy: -3 })}
+      ${S("rect", `x="104" y="64" width="32" height="20" rx="4"`, "#a86f32", { dx: -2, dy: -2 })}
+      <path d="M108 84 L108 116 L68 186 Q64 198 78 198 L162 198 Q176 198 172 186 L132 116 L132 84 Z" fill="#eef6ff"/>
+      <path d="M88 150 Q104 142 120 150 Q136 158 152 150 L172 186 Q176 198 162 198 L78 198 Q64 198 68 186 Z" fill="#7fe0a8" stroke-width="3"/>
+      <path d="M108 84 L108 116 L68 186 Q64 198 78 198 L162 198 Q176 198 172 186 L132 116 L132 84 Z" fill="none"/>
+      <circle cx="102" cy="174" r="6" fill="#fff" stroke-width="2"/><circle cx="128" cy="164" r="4" fill="#fff" stroke-width="2"/><circle cx="144" cy="182" r="3" fill="#fff" stroke-width="2"/>
+      ${shine(86, 160, 6, 24, 30)}
+      ${S("path", `d="M134 96 L204 86 L208 106 L138 116 Z"`, "#f4e2c0", { dx: -2, dy: -2 })}
+      <text x="171" y="105" fill="${INK}" stroke="none" font-size="10" font-weight="bold" text-anchor="middle" transform="rotate(-8 160 104)">NÃO MEXER</text>`, bg) },
+  { name: "Carrinho de feira", role: "Dona Cida · aríete", color: "#3a7bd5", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="116" cy="204" rx="66" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      <path d="M172 26 L160 154" fill="none" stroke-width="8"/><path d="M172 26 L160 154" fill="none" stroke="#a3a3ab" stroke-width="3"/>
+      ${S("rect", `x="156" y="16" width="34" height="16" rx="6"`, "#2b2b33", { dx: -2, dy: -2 })}
+      ${S("rect", `x="58" y="58" width="104" height="106" rx="7"`, "#3a7bd5")}
+      <path d="M58 93 L162 93 M58 128 L162 128 M93 58 L93 164 M128 58 L128 164" fill="none" stroke-width="3"/>
+      ${S("path", `d="M66 46 Q78 30 92 46 Q100 26 116 46 Q128 30 140 48 L150 58 L64 58 Z"`, "#7fc04a", { dx: -2, dy: -2 })}
+      ${S("circle", `cx="132" cy="46" r="12"`, "#d8322f", { dx: -2, dy: -2 })}${S("circle", `cx="84" cy="48" r="10"`, "#f0a020", { dx: -2, dy: -2 })}
+      ${[78, 146].map((cx) => `${S("circle", `cx="${cx}" cy="180" r="18"`, "#2b2b33", { dx: -3, dy: -3 })}${S("circle", `cx="${cx}" cy="180" r="6"`, "#c9c9cf", { dx: -1, dy: -1 })}`).join("")}`, bg) },
+  { name: "Bolo de pote", role: "Dona Cida · isca de zumbi", color: "#f07fb0", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="54" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="72" y="36" width="96" height="28" rx="7"`, "#f07fb0", { dx: -3, dy: -3 })}<path d="M80 50 L160 50" fill="none" stroke="#c85a8a" stroke-width="3"/>
+      <path d="M76 64 L164 64 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="#eef6ff"/>
+      <path d="M79 92 L161 92 L160 118 L80 118 Z" fill="#6b3a1f" stroke-width="3"/>
+      <path d="M80 118 L160 118 L159 140 L81 140 Z" fill="#f4e2c0" stroke-width="3"/>
+      <path d="M81 140 L159 140 L158 170 L82 170 Z" fill="#6b3a1f" stroke-width="3"/>
+      <path d="M82 170 L158 170 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="#f4e2c0" stroke-width="3"/>
+      <path d="M80 118 Q90 126 100 118 Q110 126 120 118 Q130 126 140 118 Q150 126 160 118" fill="none" stroke="#6b3a1f" stroke-width="4"/>
+      <path d="M76 64 L164 64 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="none"/>
+      ${shine(90, 74, 7, 110, 0)}
+      <path d="M150 44 L198 6" fill="none" stroke-width="7"/><path d="M150 44 L198 6" fill="none" stroke="#c9c9cf" stroke-width="3"/>
+      ${S("rect", `x="168" y="132" width="44" height="26" rx="4"`, "#ffd34d", { dx: -2, dy: -2 })}<path d="M164 128 L170 134" fill="none" stroke-width="2.5"/>
+      <text x="190" y="150" fill="${INK}" stroke="none" font-size="13" font-weight="bold" text-anchor="middle">R$ 5</text>`, bg) },
+  { name: "Celular e caixinha de som", role: "Kauã · atrai a horda para longe", color: "#f2c230", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="124" cy="206" rx="86" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="36" y="34" width="76" height="140" rx="13"`, "#1b1b22", { dx: -3, dy: -3 })}<rect x="46" y="50" width="56" height="106" rx="4" fill="#3a5d7a" stroke-width="3"/>
+      <rect x="56" y="62" width="36" height="17" rx="3" fill="#f4f4f4" stroke-width="2"/><rect x="58" y="64" width="5" height="13" fill="#ff4d4d" stroke="none"/><rect x="92" y="66" width="4" height="9" fill="${INK}" stroke="none"/>
+      <text x="74" y="120" fill="#ff4d4d" stroke="none" font-size="24" font-weight="bold" text-anchor="middle">3%</text>
+      <path d="M50 140 L64 126 L60 144 L76 130" fill="none" stroke="#e8f4ff" stroke-width="2" opacity=".9"/>
+      ${S("rect", `x="130" y="92" width="66" height="102" rx="18"`, "#f2c230")}
+      <circle cx="163" cy="146" r="23" fill="#2b2b33"/><circle cx="163" cy="146" r="9" fill="#a3a3ab"/>
+      ${[0, 1, 2, 3, 4].map((i) => `<circle cx="${145 + i * 9}" cy="108" r="2.2" fill="${INK}" stroke="none"/>`).join("")}
+      ${shine(140, 100, 6, 30, 0)}
+      <path d="M206 118 Q218 136 206 154 M216 104 Q238 136 216 168" fill="none" stroke-width="4"/>`, bg) },
+];
+
+
+const nestArt = (art, x, y, w, h) => art.replace("<svg ", `<svg x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet" `);
+const charBy = (n) => chars.find((c) => c.name === n);
+const led = (id) => `<pattern id="${id}" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#000"/><circle cx="5" cy="5" r="4.3" fill="#fff"/></pattern><mask id="${id}m"><rect x="-2000" y="-2000" width="6000" height="6000" fill="url(#${id})"/></mask>`;
+function araucaria(x, base, h, c) {
+  const t = [];
+  for (let i = 0; i < 4; i++) { const y = base - h + i * h * 0.12, w = h * (0.18 + i * 0.07); t.push(`<path d="M${x - w} ${y + 18} Q${x} ${y - 22} ${x + w} ${y + 18} Q${x} ${y + 2} ${x - w} ${y + 18} Z" fill="${c}"/>`); }
+  return `<rect x="${x - 5}" y="${base - h * 0.75}" width="10" height="${h * 0.75}" fill="${c}"/>${t.join("")}`;
+}
+// Profile picture: the front of A Lata, destination sign reads LINHA FINAL, a Lerdo's eyes in the dark windshield.
+const logo = `<svg viewBox="0 0 1080 1080" width="1080" height="1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>${led("ledA")}
+    <radialGradient id="bgL" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#24345c"/><stop offset="1" stop-color="#070b18"/></radialGradient>
+    <filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1080" height="1080" fill="url(#bgL)"/>
+  ${araucaria(150, 1000, 420, "#0b1226")}${araucaria(930, 1000, 470, "#0b1226")}
+  <g ${O}>
+    ${S("path", `d="M250 250 Q250 190 310 190 L770 190 Q830 190 830 250 L850 860 Q850 900 810 900 L270 900 Q230 900 230 860 Z"`, "#f0a020")}
+    ${S("rect", `x="270" y="206" width="540" height="172" rx="16"`, "#151515", { dx: -2, dy: -2 })}
+    ${S("path", `d="M290 400 L790 400 L804 640 L276 640 Z"`, "#1c2a44", { dx: 3, dy: 3 })}
+    <path d="M330 620 L420 420 M380 620 L470 420" fill="none" stroke="#5a7aa6" stroke-width="10" opacity=".55"/>
+    <ellipse cx="500" cy="540" rx="22" ry="15" fill="#e9f7c8" stroke="none"/><ellipse cx="590" cy="540" rx="22" ry="15" fill="#e9f7c8" stroke="none"/>
+    <circle cx="500" cy="542" r="6" fill="#6b7a50" stroke="none"/><circle cx="590" cy="542" r="6" fill="#6b7a50" stroke="none"/>
+    <path d="M460 504 L530 520 M560 520 L630 504" fill="none" stroke="#e9f7c8" stroke-width="8" opacity=".8"/>
+    <rect x="230" y="700" width="620" height="44" fill="#2f5fb3" stroke="none"/><path d="M232 700 L848 700 M232 744 L848 744" fill="none"/>
+    ${S("circle", `cx="330" cy="800" r="44"`, "#ffe98a", { dx: -3, dy: -3 })}${S("circle", `cx="750" cy="800" r="44"`, "#ffe98a", { dx: -3, dy: -3 })}
+    ${S("rect", `x="440" y="776" width="200" height="56" rx="10"`, "#2b2b33", { dx: -2, dy: -2 })}
+    <text x="540" y="818" fill="#ffd34d" stroke="none" font-family="DejaVu Sans Mono, monospace" font-weight="bold" font-size="40" text-anchor="middle">13</text>
+    ${S("rect", `x="196" y="420" width="36" height="120" rx="10"`, "#2b2b33", { dx: -2, dy: -2 })}${S("rect", `x="848" y="420" width="36" height="120" rx="10"`, "#2b2b33", { dx: -2, dy: -2 })}
+    ${S("rect", `x="270" y="900" width="90" height="70" rx="10"`, "#1b1b22", { dx: -2, dy: -2 })}${S("rect", `x="720" y="900" width="90" height="70" rx="10"`, "#1b1b22", { dx: -2, dy: -2 })}
+  </g>
+  <g font-family="DejaVu Sans Mono, monospace" font-weight="bold" text-anchor="middle" filter="url(#glow)">
+    <g mask="url(#ledAm)"><text x="540" y="290" font-size="98" fill="#ffe25a" letter-spacing="2">LINHA</text><text x="540" y="356" font-size="98" fill="#ffe25a" letter-spacing="2" transform="translate(0 2)">FINAL</text></g>
+  </g>
+</svg>`;
+
+// Cover: 1640x624, the whole cast in front of the bus at night, title on the left, safe area in the middle.
+const cast = ["Seu Valdir", "Jé", "Professor Otávio", "Dona Cida", "Kauã", "Rex", "O Passageiro do Fundo"];
+const capa = `<svg viewBox="0 0 1640 624" width="1640" height="624" xmlns="http://www.w3.org/2000/svg">
+  <defs>${led("ledB")}
+    <linearGradient id="skyC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070d22"/><stop offset="1" stop-color="#33406c"/></linearGradient>
+    <linearGradient id="topC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070b18" stop-opacity=".9"/><stop offset="1" stop-color="#070b18" stop-opacity="0"/></linearGradient>
+    <filter id="glow2" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1640" height="624" fill="url(#skyC)"/>
+  <circle cx="1480" cy="120" r="56" fill="#fff6d6"/>
+  ${[80, 300, 1340, 1560].map((x, i) => araucaria(x, 500, 300 + (i % 2) * 80, "#0d1530")).join("")}
+  <rect x="0" y="500" width="1640" height="124" fill="#1a1f2c"/>
+  ${nestArt(items.find((c) => c.name === "A Lata").art(""), 370, 220, 900, 383)}
+  ${cast.map((n, i) => nestArt(charBy(n).art(""), 360 + i * 132, 320, 168, 294)).join("")}
+  <rect x="0" y="0" width="1640" height="240" fill="url(#topC)"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-weight="bold" text-anchor="middle" filter="url(#glow2)"><g mask="url(#ledBm)">
+    <text x="820" y="138" font-size="118" fill="#ffe25a" letter-spacing="4">LINHA FINAL</text></g></g>
+  <text x="820" y="196" font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" font-size="30" fill="#ffffff" text-anchor="middle" stroke="#070b18" stroke-width="6" paint-order="stroke">Série animada · O último ônibus de Curitiba · Você decide o que acontece</text>
+</svg>`;
+document.getElementById("out").innerHTML = location.hash === "#capa" ? capa : logo;
+</script></body></html>
