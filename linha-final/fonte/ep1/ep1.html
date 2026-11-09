@@ -1,0 +1,871 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000}#wrap{position:relative;width:1080px;height:1920px;overflow:hidden}#stage,#overlay{position:absolute;inset:0}</style></head><body><div id="wrap"><div id="stage"></div><svg id="overlay" viewBox="0 0 1080 1920" width="1080" height="1920" xmlns="http://www.w3.org/2000/svg"><g id="sub"></g><g id="tagT" font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold"><rect x="780" y="60" width="250" height="60" rx="14" fill="#1b1b22" opacity=".8"/><text x="905" y="102" font-size="28" fill="#ffd34d" text-anchor="middle" letter-spacing="2">LINHA FINAL · 1</text></g></svg></div><script>
+const INK = "#1b1b22";
+const O = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
+let uid = 0;
+function mix(hex, other, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const a = p(hex), b = p(other);
+  return "#" + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+const dark = (c, t = 0.24) => mix(c, "#141428", t);
+const light = (c, t = 0.35) => mix(c, "#ffffff", t);
+// Cel-shaded shape: shadow color underneath, base color shifted toward the light (top-left), outline on top.
+function S(tag, attrs, fill, opt = {}) {
+  const id = "c" + uid++;
+  const dx = opt.dx ?? -8, dy = opt.dy ?? -6;
+  const hl = opt.hl ? `<g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${light(fill, 0.45)}" transform="translate(${-dx * 1.6},${-dy * 1.6}) scale(1)" opacity="0"/></g>` : "";
+  return `<clipPath id="${id}"><${tag} ${attrs}/></clipPath>
+    <${tag} ${attrs} fill="${dark(fill)}" stroke="none"/>
+    <g clip-path="url(#${id})" stroke="none"><${tag} ${attrs} fill="${fill}" transform="translate(${dx},${dy})"/></g>${hl}
+    <${tag} ${attrs} fill="none"/>`;
+}
+const svg = (vb, inner, bg) => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${bg || ""}<g ${O}>${inner}</g></svg>`;
+function bgCard(vb, color) {
+  const [, , w, h] = vb.split(" ").map(Number);
+  const id = "g" + uid++;
+  return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mix(color, "#ffffff", 0.82)}"/><stop offset="1" stop-color="${mix(color, "#ffffff", 0.62)}"/></linearGradient></defs>
+    <rect x="-20" y="-20" width="${w + 40}" height="${h + 40}" fill="url(#${id})"/>
+    <circle cx="${w * 0.82}" cy="${h * 0.16}" r="${w * 0.1}" fill="#ffffff" opacity=".5"/>`;
+}
+const shine = (x, y, w = 10, h = 22, r = -20) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${w / 2}" fill="#ffffff" opacity=".55" stroke="none" transform="rotate(${r} ${x} ${y})"/>`;
+
+function eyes({ y = 100, look = 0, lid = false, brow = "flat", browColor = INK } = {}) {
+  const brows = {
+    flat: `M70 ${y - 18} Q82 ${y - 23} 92 ${y - 18} M108 ${y - 18} Q118 ${y - 23} 130 ${y - 18}`,
+    worried: `M70 ${y - 16} Q82 ${y - 24} 92 ${y - 24} M108 ${y - 24} Q118 ${y - 24} 130 ${y - 16}`,
+    sharp: `M70 ${y - 22} L92 ${y - 16} M108 ${y - 16} L130 ${y - 22}`,
+    up: `M70 ${y - 20} Q82 ${y - 30} 92 ${y - 22} M108 ${y - 22} Q118 ${y - 30} 130 ${y - 20}`,
+  }[brow];
+  return `<ellipse cx="82" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/><ellipse cx="118" cy="${y}" rx="8" ry="9.5" fill="#fff" stroke-width="3"/>
+    <circle cx="${83 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/><circle cx="${119 + look}" cy="${y + 1}" r="4.6" fill="${INK}" stroke="none"/>
+    <circle cx="${85 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/><circle cx="${121 + look}" cy="${y - 1}" r="1.5" fill="#fff" stroke="none"/>
+    ${lid ? `<path d="M73 ${y - 4} Q82 ${y - 12} 91 ${y - 4} M109 ${y - 4} Q118 ${y - 12} 127 ${y - 4}" fill="none" stroke-width="3.5"/>` : ""}
+    <path d="${brows}" fill="none" stroke="${browColor}" stroke-width="5"/>`;
+}
+const nose = (skin) => `<path d="M100 104 Q94 116 101 118" fill="none" stroke="${dark(skin, 0.45)}" stroke-width="3"/>`;
+const ears = (skin) => S("ellipse", `cx="50" cy="104" rx="9" ry="12"`, skin) + S("ellipse", `cx="150" cy="104" rx="9" ry="12"`, skin);
+const hand = (cx, cy, skin) => S("circle", `cx="${cx}" cy="${cy}" r="11.5"`, skin) + `<path d="M${cx - 6} ${cy - 2} q-6 -2 -6 4" fill="none" stroke-width="3"/>`;
+const groundShadow = `<ellipse cx="100" cy="332" rx="62" ry="9" fill="${INK}" opacity=".18" stroke="none"/>`;
+
+// Body layout: every character gets its own shape so the silhouette alone identifies them.
+function geom(L = {}) {
+  const g = {
+    cx: 100, feet: 326,
+    torsoW: L.torsoW ?? 84, torsoH: L.torsoH ?? 124, legH: L.legH ?? 60, legW: L.legW ?? 24, legGap: L.legGap ?? 8,
+    armW: L.armW ?? 24, armH: L.armH ?? 88, headS: L.headS ?? 1, headDX: L.headDX ?? 0, headDY: L.headDY ?? 0,
+  };
+  g.legTop = g.feet - 6 - g.legH;
+  g.bottom = g.legTop + 10;
+  g.top = g.bottom - g.torsoH;
+  g.x = g.cx - g.torsoW / 2;
+  g.right = g.x + g.torsoW;
+  g.shoulder = g.top + 12;
+  g.armLX = g.x - g.armW + 4;
+  g.armRX = g.right - 4;
+  g.handY = g.shoulder + g.armH + 4;
+  g.handLX = g.armLX + g.armW / 2;
+  g.handRX = g.armRX + g.armW / 2;
+  g.headCX = g.cx + g.headDX;
+  g.headCY = g.top - 8 - 52 * g.headS + 10 + g.headDY;
+  g.legLX = g.cx - g.legGap / 2 - g.legW;
+  g.legRX = g.cx + g.legGap / 2;
+  return g;
+}
+const call = (v, g) => (typeof v === "function" ? v(g) : v || "");
+
+function person(o) {
+  const g = geom(o.L);
+  const { skin, shirt, pants, shoes = "#2b2b33" } = o;
+  const sl = o.sleeve || shirt;
+  const rx = Math.min(24, g.torsoW / 3);
+  const torsoShape = o.torsoShape ? o.torsoShape(g) : S("rect", `x="${g.x}" y="${g.top}" width="${g.torsoW}" height="${g.torsoH}" rx="${rx}"`, shirt);
+  const defaultArms = S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handLX, g.handY, skin)
+    + S("rect", `x="${g.armRX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="${g.armW / 2}"`, sl) + hand(g.handRX, g.handY, skin);
+  const defaultLegs = S("rect", `x="${g.legLX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants)
+    + S("rect", `x="${g.legRX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, pants);
+  const shoe = (lx, w) => S("path", `d="M${lx - 10} ${g.feet} Q${lx - 10} ${g.feet - 12} ${lx + 4} ${g.feet - 12} L${lx + w - 2} ${g.feet - 12} Q${lx + w + 12} ${g.feet - 12} ${lx + w + 12} ${g.feet} Z"`, shoes);
+  const headT = `translate(${g.headCX - 100 * g.headS} ${g.headCY - 98 * g.headS}) scale(${g.headS})`;
+  const headPart = `<g transform="${headT}">
+      ${call(o.headBack, g)}
+      ${o.head === false ? "" : ears(skin) + S("circle", `cx="100" cy="98" r="52"`, skin)}
+      ${o.head === false ? "" : `<circle cx="70" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/><circle cx="130" cy="120" r="8" fill="#ff8a7a" opacity=".25" stroke="none"/>`}
+      ${call(o.hair, g)}${call(o.face, g)}</g>`;
+  const lean = o.lean || 0, sc = o.scale || 1;
+  return `<ellipse cx="100" cy="332" rx="${62 * sc + (o.L?.torsoW ?? 84) / 6 - 14}" ry="9" fill="${INK}" opacity=".18" stroke="none"/>
+    <g transform="translate(100 ${g.feet}) rotate(${lean}) scale(${sc}) translate(-100 ${-g.feet})">
+    ${call(o.back, g)}
+    ${o.legs ? o.legs(g) : defaultLegs}
+    ${shoe(g.legLX, g.legW)}${shoe(g.legRX, g.legW)}
+    <path d="M${g.legLX - 10} ${g.feet} L${g.legLX + g.legW + 12} ${g.feet} M${g.legRX - 10} ${g.feet} L${g.legRX + g.legW + 12} ${g.feet}" fill="none" stroke="${light(shoes, 0.5)}" stroke-width="3"/>
+    ${torsoShape}
+    ${call(o.torso, g)}
+    ${o.arms ? o.arms(g) : defaultArms}
+    ${o.head === false ? "" : S("rect", `x="${g.headCX - 10}" y="${g.top - 14}" width="20" height="18" rx="4"`, skin, { dx: -4, dy: -2 })}
+    ${headPart}
+    ${call(o.front, g)}
+    </g>`;
+}
+
+const chars = [
+  { name: "Seu Valdir", role: "Motorista · largo e barrigudo", color: "#2f5fb3", art: (bg) => svg("0 0 200 350", person({
+      skin: "#e0a878", shirt: "#8fb6e8", pants: "#2b3550",
+      L: { torsoW: 124, torsoH: 118, legH: 48, legW: 30, legGap: 14, armW: 28, armH: 80, headS: 0.94 },
+      torsoShape: (g) => S("path", `d="M${g.x + 14} ${g.top} L${g.right - 14} ${g.top} Q${g.right + 4} ${g.top + 6} ${g.right + 6} ${g.top + 50} Q${g.right + 10} ${g.bottom} ${g.cx} ${g.bottom + 4} Q${g.x - 10} ${g.bottom} ${g.x - 6} ${g.top + 50} Q${g.x - 4} ${g.top + 6} ${g.x + 14} ${g.top} Z"`, "#8fb6e8"),
+      torso: (g) => `<path d="M${g.cx} ${g.top + 4} L${g.cx} ${g.bottom - 2}" fill="none" stroke-width="3"/><path d="M${g.cx - 20} ${g.top} L${g.cx} ${g.top + 16} L${g.cx + 20} ${g.top}" fill="#f4f4f4" stroke-width="3"/>
+              ${S("rect", `x="${g.cx + 18}" y="${g.top + 26}" width="24" height="15" rx="2"`, "#ffd34d", { dx: -3, dy: -2 })}
+              ${[0, 1, 2].map((i) => `<circle cx="${g.cx - 7}" cy="${g.top + 34 + i * 22}" r="3" fill="${INK}"/>`).join("")}
+              ${S("rect", `x="${g.x - 4}" y="${g.bottom - 26}" width="${g.torsoW + 8}" height="13" rx="4"`, "#3a2a20", { dx: -3, dy: -2 })}${S("rect", `x="${g.cx - 9}" y="${g.bottom - 28}" width="18" height="17" rx="3"`, "#c9c9cf", { dx: -2, dy: -2 })}`,
+      hair: `<path d="M49 100 Q46 76 60 68 L66 106 Z" fill="#b0b0b8"/><path d="M151 100 Q154 76 140 68 L134 106 Z" fill="#b0b0b8"/>
+             ${S("path", `d="M48 84 Q50 36 100 34 Q150 36 152 84 Z"`, "#2f5fb3")}${S("path", `d="M96 82 L170 82 Q178 94 162 98 L96 94 Z"`, "#244a8c", { dx: -3, dy: -3 })}
+             ${S("rect", `x="88" y="50" width="24" height="16" rx="3"`, "#ffd34d", { dx: -3, dy: -2 })}`,
+      face: `${eyes({ y: 104, lid: true, brow: "flat", browColor: "#8a8a92" })}${nose("#e0a878")}
+             ${S("path", `d="M74 124 Q88 110 100 119 Q112 110 126 124 Q112 132 100 126 Q88 132 74 124 Z"`, "#7a6a5e", { dx: -2, dy: -3 })}
+             <path d="M90 138 Q100 142 110 138" fill="none" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Jé", role: "Entregadora · magra e sempre para a frente", color: "#d8322f", art: (bg) => svg("0 0 200 350", person({
+      skin: "#8d5a3b", shirt: "#2a2f3a", pants: "#3e5a8a", shoes: "#f4f4f4", lean: 7,
+      L: { torsoW: 62, torsoH: 112, legH: 82, legW: 20, legGap: 10, armW: 20, armH: 90, headS: 0.9, headDX: 6 },
+      back: (g) => `${S("rect", `x="${g.x - 34}" y="${g.top - 16}" width="${g.torsoW + 22}" height="104" rx="14"`, "#d8322f")}<path d="M${g.x - 34} ${g.top + 10} L${g.x - 12 + g.torsoW} ${g.top + 10}" fill="none" stroke-width="3"/>
+             <rect x="${g.x - 26}" y="${g.top + 56}" width="${g.torsoW + 6}" height="10" fill="#f4f4f4" stroke-width="2.5"/>`,
+      torso: (g) => `<path d="M${g.x + 4} ${g.top + 14} L${g.cx - 4} ${g.bottom - 30} M${g.right - 4} ${g.top + 14} L${g.cx + 4} ${g.bottom - 30}" fill="none" stroke="#111" stroke-width="7"/>
+              <path d="M${g.cx} ${g.top + 4} L${g.cx} ${g.bottom - 4}" fill="none" stroke="#5a6070" stroke-width="3"/><rect x="${g.x + 4}" y="${g.bottom - 22}" width="${g.torsoW - 8}" height="6" fill="#ffd34d" stroke="none"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="10"`, "#2a2f3a") + hand(g.handLX, g.handY, "#8d5a3b")
+            + S("rect", `x="${g.armRX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH - 34}" rx="10"`, "#2a2f3a", { dx: -4, dy: -3 })
+            + S("rect", `x="${g.armRX}" y="${g.shoulder + g.armH - 52}" width="40" height="${g.armW}" rx="10"`, "#2a2f3a", { dx: -4, dy: -3 }) + hand(g.armRX + 44, g.shoulder + g.armH - 42, "#8d5a3b"),
+      hair: `${S("path", `d="M146 104 Q190 120 178 172 Q162 138 142 120 Z"`, "#2a1d16", { dx: -3, dy: -3 })}
+             ${S("path", `d="M44 100 Q42 38 100 38 Q158 38 156 100 Z"`, "#d8322f")}${S("rect", `x="54" y="78" width="92" height="17" rx="8"`, "#2a2f3a", { dx: -3, dy: -2 })}
+             ${shine(62, 54, 9, 20, -40)}`,
+      face: `${eyes({ y: 110, look: 3, brow: "sharp" })}${nose("#8d5a3b")}<path d="M86 130 Q104 138 118 124" fill="none" stroke-width="4"/>`,
+    }), bg) },
+  { name: "Professor Otávio", role: "Químico · alto, magro e curvado", color: "#6b7d3a", art: (bg) => svg("0 0 200 350", person({
+      skin: "#f1c9a0", shirt: "#6b7d3a", pants: "#4a4a52", shoes: "#6b3a1f",
+      L: { torsoW: 56, torsoH: 122, legH: 96, legW: 18, legGap: 6, armW: 18, armH: 104, headS: 0.84, headDX: 14, headDY: 16 },
+      torsoShape: (g) => S("path", `d="M${g.x + 6} ${g.top + 4} Q${g.x + 30} ${g.top - 8} ${g.right + 6} ${g.top + 10} Q${g.right + 2} ${g.top + 60} ${g.right} ${g.bottom} L${g.x} ${g.bottom} Q${g.x - 6} ${g.top + 50} ${g.x + 6} ${g.top + 4} Z"`, "#6b7d3a"),
+      torso: (g) => `<path d="M${g.cx - 10} ${g.top + 2} L${g.cx + 2} ${g.top + 44} L${g.cx + 14} ${g.top + 4} Z" fill="#f4f4f4" stroke-width="3"/><path d="M${g.cx - 1} ${g.top + 10} L${g.cx + 2} ${g.top + 42} L${g.cx + 5} ${g.top + 10} Z" fill="#a33a3a" stroke-width="2.5"/>
+              <circle cx="${g.cx + 2}" cy="${g.top + 64}" r="3.5" fill="${INK}"/><circle cx="${g.cx + 2}" cy="${g.top + 88}" r="3.5" fill="${INK}"/>
+              ${S("rect", `x="${g.right - 22}" y="${g.top + 26}" width="16" height="14" rx="2"`, "#5a6b2e", { dx: -2, dy: -2 })}<path d="M${g.right - 17} ${g.top + 22} L${g.right - 17} ${g.top + 32} M${g.right - 11} ${g.top + 20} L${g.right - 11} ${g.top + 32}" fill="none" stroke-width="2.5"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="9"`, "#6b7d3a") + hand(g.handLX, g.handY, "#f1c9a0")
+            + S("rect", `x="${g.armRX + 4}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH - 6}" rx="9"`, "#6b7d3a")
+            + S("rect", `x="${g.armRX - 6}" y="${g.handY - 2}" width="46" height="32" rx="5"`, "#7a4a24") + `<path d="M${g.armRX - 6} ${g.handY + 10} L${g.armRX + 40} ${g.handY + 10}" fill="none" stroke-width="3"/>`
+            + `<rect x="${g.armRX + 14}" y="${g.handY + 6}" width="8" height="8" fill="#ffd34d" stroke-width="2"/>` + hand(g.armRX + 13, g.handY - 2, "#f1c9a0"),
+      hair: `${S("path", `d="M50 92 Q50 40 100 40 Q150 40 150 92 Q132 62 100 66 Q68 62 50 92 Z"`, "#6b4a2f")}
+             ${S("path", `d="M148 66 Q158 80 150 90 Q140 84 148 66 Z"`, "#7cc8ff", { dx: -2, dy: -2 })}`,
+      face: `${eyes({ y: 102, look: -1, brow: "worried" })}
+             <circle cx="82" cy="102" r="15" fill="#ffffff" fill-opacity=".25" stroke-width="3.5"/><circle cx="118" cy="102" r="15" fill="#ffffff" fill-opacity=".25" stroke-width="3.5"/>
+             <path d="M97 102 L103 102 M67 100 L52 96 M133 100 L148 96" fill="none" stroke-width="3"/>${nose("#f1c9a0")}
+             <path d="M84 130 q4 -5 8 0 t8 0 t8 0 t8 0" fill="none" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Dona Cida", role: "Vende bolo de pote · baixinha e redonda", color: "#f07fb0", art: (bg) => svg("0 0 200 350", person({
+      skin: "#c68a5e", shirt: "#8a5aa8", pants: "#8a5aa8", shoes: "#5a3a2a",
+      L: { torsoW: 108, torsoH: 96, legH: 26, legW: 20, legGap: 18, armW: 22, armH: 62, headS: 0.98 },
+      back: (g) => `${S("rect", `x="${g.x - 44}" y="${g.bottom - 58}" width="40" height="58" rx="5"`, "#3a7bd5")}<path d="M${g.x - 44} ${g.bottom - 38} L${g.x - 4} ${g.bottom - 38} M${g.x - 44} ${g.bottom - 18} L${g.x - 4} ${g.bottom - 18} M${g.x - 30} ${g.bottom - 58} L${g.x - 30} ${g.bottom} M${g.x - 16} ${g.bottom - 58} L${g.x - 16} ${g.bottom}" fill="none" stroke-width="2.5"/>
+             ${S("circle", `cx="${g.x - 34}" cy="${g.feet - 8}" r="10"`, "#2b2b33", { dx: -3, dy: -3 })}${S("circle", `cx="${g.x - 12}" cy="${g.feet - 8}" r="10"`, "#2b2b33", { dx: -3, dy: -3 })}<path d="M${g.x - 10} ${g.bottom - 56} L${g.x - 2} ${g.handY - 4}" fill="none" stroke-width="5"/>
+             ${S("rect", `x="${g.x - 40}" y="${g.bottom - 76}" width="30" height="20" rx="4"`, "#f4e2c0", { dx: -2, dy: -2 })}<path d="M${g.x - 40} ${g.bottom - 68} L${g.x - 10} ${g.bottom - 68}" fill="none" stroke="#6b3a1f" stroke-width="4"/>`,
+      torsoShape: (g) => S("path", `d="M${g.x + 20} ${g.top} L${g.right - 20} ${g.top} Q${g.right + 6} ${g.top + 10} ${g.right + 10} ${g.bottom - 10} Q${g.right + 12} ${g.bottom + 6} ${g.cx} ${g.bottom + 6} Q${g.x - 12} ${g.bottom + 6} ${g.x - 10} ${g.bottom - 10} Q${g.x - 6} ${g.top + 10} ${g.x + 20} ${g.top} Z"`, "#8a5aa8"),
+      torso: (g) => `${S("path", `d="M${g.x - 4} ${g.top + 10} Q${g.cx} ${g.top - 12} ${g.right + 4} ${g.top + 10} L${g.cx} ${g.top + 66} Z"`, "#f07fb0")}
+              ${[[-26, 14, "#fff"], [18, 10, "#ffd34d"], [0, 38, "#fff"], [36, 18, "#fff"], [-40, 10, "#ffd34d"], [-6, 8, "#fff"]].map(([dx, dy, c]) => `<circle cx="${g.cx + dx}" cy="${g.top + dy}" r="5.5" fill="${c}" stroke-width="2"/><circle cx="${g.cx + dx}" cy="${g.top + dy}" r="1.8" fill="#e05a90" stroke="none"/>`).join("")}
+              <path d="M${g.x + 6} ${g.bottom - 8} Q${g.cx} ${g.bottom + 2} ${g.right - 6} ${g.bottom - 8}" fill="none" stroke="#6a3a88" stroke-width="3"/>`,
+      headBack: S("circle", `cx="100" cy="42" r="20"`, "#c9c9cf", { dx: -4, dy: -3 }),
+      hair: `${S("path", `d="M46 98 Q46 50 100 50 Q154 50 154 98 Q142 70 100 70 Q58 70 46 98 Z"`, "#c9c9cf")}<path d="M70 62 Q86 56 100 58" fill="none" stroke="#9a9aa3" stroke-width="3"/>`,
+      face: `${eyes({ y: 104, brow: "up", browColor: "#9a9aa3" })}<circle cx="82" cy="104" r="13" fill="none" stroke-width="3"/><circle cx="118" cy="104" r="13" fill="none" stroke-width="3"/><path d="M95 104 L105 104" fill="none" stroke-width="3"/>
+             ${nose("#c68a5e")}<path d="M82 126 Q100 144 118 126 Q100 134 82 126 Z" fill="#7a2e2e" stroke-width="3.5"/>`,
+    }), bg) },
+  { name: "Kauã", role: "Quer viralizar · pequeno e cabeçudo", color: "#f2c230", art: (bg) => svg("0 0 200 350", person({
+      skin: "#a8704a", shirt: "#f2c230", pants: "#3e5a8a", shoes: "#f4f4f4",
+      L: { torsoW: 70, torsoH: 86, legH: 50, legW: 20, legGap: 8, armW: 20, armH: 66, headS: 1.16 },
+      torso: (g) => `${S("rect", `x="${g.cx - 22}" y="${g.bottom - 40}" width="44" height="24" rx="8"`, "#e0ad1c", { dx: -3, dy: -2 })}<path d="M${g.cx - 9} ${g.top + 4} L${g.cx - 10} ${g.top + 30} M${g.cx + 9} ${g.top + 4} L${g.cx + 10} ${g.top + 30}" fill="none" stroke-width="3"/>
+              <circle cx="${g.cx - 10}" cy="${g.top + 32}" r="3" fill="${INK}"/><circle cx="${g.cx + 10}" cy="${g.top + 32}" r="3" fill="${INK}"/>`,
+      arms: (g) => S("rect", `x="${g.armLX}" y="${g.shoulder}" width="${g.armW}" height="${g.armH}" rx="10"`, "#f2c230") + hand(g.handLX, g.handY, "#a8704a"),
+      headBack: S("path", `d="M38 124 Q32 36 100 32 Q168 36 162 124 Z"`, "#f2c230"),
+      hair: `${S("path", `d="M52 84 Q64 46 104 48 Q144 48 150 88 Q126 70 106 74 Q84 66 52 84 Z"`, "#1b1b22", { dx: -3, dy: -3 })}<path d="M80 60 Q96 54 110 58" fill="none" stroke="#4a4a58" stroke-width="3"/>`,
+      face: `${eyes({ y: 104, look: 2, brow: "up" })}${nose("#a8704a")}<path d="M84 122 Q100 146 116 122 Z" fill="#7a2e2e" stroke-width="3.5"/><path d="M88 124 L112 124" fill="none" stroke="#fff" stroke-width="4"/>`,
+      front: (g) => `${S("rect", `x="${g.armRX + 6}" y="${g.shoulder - 58}" width="20" height="70" rx="10"`, "#f2c230")}${hand(g.armRX + 16, g.shoulder - 58, "#a8704a")}
+              ${S("rect", `x="${g.armRX + 2}" y="${g.shoulder - 112}" width="32" height="54" rx="7"`, "#1b1b22", { dx: -3, dy: -3 })}<rect x="${g.armRX + 7}" y="${g.shoulder - 105}" width="22" height="38" rx="3" fill="#3a5d7a" stroke-width="2"/>
+              <rect x="${g.armRX + 10}" y="${g.shoulder - 100}" width="15" height="8" rx="2" fill="#f4f4f4" stroke-width="1.5"/><rect x="${g.armRX + 11}" y="${g.shoulder - 99}" width="3" height="6" fill="#ff4d4d" stroke="none"/>
+              <circle cx="${g.armRX + 38}" cy="${g.shoulder - 108}" r="5" fill="#ff4d4d" stroke-width="2"/>`,
+    }), bg) },
+  { name: "Rex", role: "Vira-lata caramelo · alarme de zumbi", color: "#d29a52", art: (bg) => svg("0 0 200 350", `
+      <ellipse cx="100" cy="326" rx="70" ry="8" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("path", `d="M46 254 Q18 220 32 200 Q44 228 60 244 Z"`, "#d29a52", { dx: -3, dy: -3 })}
+      ${S("rect", `x="56" y="274" width="17" height="48" rx="7"`, "#c08440")}${S("rect", `x="82" y="280" width="17" height="42" rx="7"`, "#b07434")}
+      ${S("rect", `x="114" y="280" width="17" height="42" rx="7"`, "#b07434")}${S("rect", `x="138" y="274" width="17" height="48" rx="7"`, "#c08440")}
+      <path d="M58 322 L74 322 M138 322 L156 322" fill="none" stroke="#f4e2c0" stroke-width="3"/>
+      ${S("ellipse", `cx="100" cy="262" rx="62" ry="34"`, "#d29a52")}
+      <path d="M78 276 Q100 290 122 276" fill="none" stroke="#ecc38a" stroke-width="6"/>
+      ${S("path", `d="M120 238 L158 244 L140 270 Z"`, "#d8322f", { dx: -3, dy: -3 })}<circle cx="138" cy="248" r="2.5" fill="#fff" stroke="none"/><circle cx="146" cy="254" r="2.5" fill="#fff" stroke="none"/>
+      ${S("circle", `cx="150" cy="218" r="33"`, "#d29a52")}
+      ${S("path", `d="M126 196 Q114 222 130 236 Q140 214 138 196 Z"`, "#a86f32", { dx: -2, dy: -2 })}
+      ${S("ellipse", `cx="176" cy="230" rx="17" ry="12"`, "#ecc38a", { dx: -3, dy: -2 })}<circle cx="191" cy="225" r="6" fill="${INK}"/><circle cx="189" cy="223" r="1.8" fill="#fff" stroke="none"/>
+      <ellipse cx="154" cy="210" rx="6" ry="7" fill="#fff" stroke-width="3"/><circle cx="156" cy="211" r="3.8" fill="${INK}" stroke="none"/>
+      <path d="M144 196 Q154 192 162 198" fill="none" stroke-width="4"/>
+      ${S("path", `d="M174 242 Q180 258 188 244 Z"`, "#ff8fa3", { dx: -2, dy: -2 })}`, bg) },
+  { name: "O Passageiro do Fundo", role: "Nunca fala · ombros largos, capuz", color: "#6c6f78", art: (bg) => svg("0 0 200 350", person({
+      skin: "#c9b7a6", shirt: "#6c6f78", pants: "#3a3c44", head: false,
+      L: { torsoW: 96, torsoH: 120, legH: 66, legW: 22, legGap: 12, armW: 24, armH: 96, headS: 1 },
+      torsoShape: (g) => S("path", `d="M${g.x - 10} ${g.top + 18} Q${g.x - 8} ${g.top} ${g.x + 16} ${g.top} L${g.right - 16} ${g.top} Q${g.right + 8} ${g.top} ${g.right + 10} ${g.top + 18} L${g.right - 6} ${g.bottom} L${g.x + 6} ${g.bottom} Z"`, "#6c6f78"),
+      torso: (g) => `<path d="M${g.cx - 14} ${g.top + 4} L${g.cx - 14} ${g.top + 50} M${g.cx + 14} ${g.top + 4} L${g.cx + 14} ${g.top + 50}" fill="none" stroke-width="3"/>${S("rect", `x="${g.cx - 26}" y="${g.bottom - 46}" width="52" height="28" rx="9"`, "#5c5f68", { dx: -3, dy: -2 })}`,
+      arms: (g) => S("rect", `x="${g.armLX - 8}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH}" rx="12"`, "#6c6f78") + S("rect", `x="${g.armLX - 11}" y="${g.shoulder + g.armH - 36}" width="30" height="18" rx="3"`, "#f4f4f4", { dx: -2, dy: -2 }) + `<path d="M${g.armLX - 8} ${g.shoulder + g.armH - 30} L${g.armLX + 16} ${g.shoulder + g.armH - 24}" fill="none" stroke-width="2"/>` + hand(g.handLX - 8, g.handY + 4, "#b9c4a6")
+            + S("rect", `x="${g.armRX + 8}" y="${g.shoulder + 4}" width="${g.armW}" height="${g.armH}" rx="12"`, "#6c6f78") + hand(g.handRX + 8, g.handY + 4, "#c9b7a6"),
+      hair: `${S("path", `d="M40 124 Q36 30 100 28 Q164 30 160 124 Q152 156 100 158 Q48 156 40 124 Z"`, "#6c6f78")}
+             <ellipse cx="100" cy="110" rx="35" ry="40" fill="#22242b" stroke-width="4"/><path d="M68 92 Q100 70 132 92" fill="none" stroke="#3a3c44" stroke-width="5"/>`,
+      face: `<ellipse cx="88" cy="106" rx="4" ry="3" fill="#e9f0ff" stroke="none"/><ellipse cx="112" cy="106" rx="4" ry="3" fill="#e9f0ff" stroke="none"/>`,
+    }), bg) },
+  { name: "Lerdo comum", role: "O zumbi de todo dia · torto e arrastado", color: "#9bb08a", art: (bg) => svg("0 0 200 350", person({
+      skin: "#9bb08a", shirt: "#a07a5a", pants: "#5a5a64", shoes: "#4a3a30", lean: -5,
+      L: { torsoW: 78, torsoH: 116, legH: 62, legW: 22, legGap: 10, armW: 22, armH: 88, headS: 0.96, headDX: 10, headDY: 10 },
+      torso: (g) => `<path d="M${g.x} ${g.bottom - 20} L${g.x + 12} ${g.bottom - 8} L${g.x + 24} ${g.bottom - 22} L${g.x + 36} ${g.bottom - 6} L${g.x + 48} ${g.bottom - 22} L${g.x + 60} ${g.bottom - 6} L${g.x + 72} ${g.bottom - 20} L${g.right} ${g.bottom} L${g.x} ${g.bottom} Z" fill="${mix("#9bb08a", "#ffffff", 0.66)}" stroke="none"/>
+              <path d="M${g.x} ${g.bottom - 20} L${g.x + 12} ${g.bottom - 8} L${g.x + 24} ${g.bottom - 22} L${g.x + 36} ${g.bottom - 6} L${g.x + 48} ${g.bottom - 22} L${g.x + 60} ${g.bottom - 6} L${g.x + 72} ${g.bottom - 20}" fill="none" stroke-width="3"/>
+              <path d="M${g.x + 18} ${g.top + 28} l10 8 M${g.x + 52} ${g.top + 52} l8 -10" fill="none" stroke-width="3"/><circle cx="${g.x + 60}" cy="${g.top + 76}" r="7" fill="${mix("#a07a5a", "#141428", 0.3)}" stroke-width="3"/>`,
+      legs: (g) => S("rect", `x="${g.legLX}" y="${g.legTop}" width="${g.legW}" height="${g.legH}" rx="8"`, "#5a5a64") + S("rect", `x="${g.legRX}" y="${g.legTop + 6}" width="${g.legW}" height="${g.legH - 6}" rx="8"`, "#5a5a64") + `<path d="M${g.legRX} ${g.legTop + 40} L${g.legRX + 14} ${g.legTop + 44} L${g.legRX + 8} ${g.legTop + 52}" fill="none" stroke-width="3"/>`,
+      arms: (g) => S("rect", `x="${g.cx - 4}" y="${g.shoulder - 2}" width="96" height="${g.armW}" rx="11"`, "#a07a5a") + hand(g.cx + 96, g.shoulder + 9, "#9bb08a")
+            + S("rect", `x="${g.cx - 4}" y="${g.shoulder + 30}" width="84" height="${g.armW}" rx="11"`, "#a07a5a") + hand(g.cx + 84, g.shoulder + 41, "#9bb08a"),
+      hair: `${S("path", `d="M54 80 L62 52 L74 68 L84 44 L96 64 L108 42 L118 64 L132 48 L138 70 L150 62 L148 84 Q100 62 54 80 Z"`, "#3a3a30", { dx: -3, dy: -3 })}`,
+      face: `<ellipse cx="82" cy="100" rx="11" ry="12" fill="#f4f8ec" stroke-width="3.5"/><ellipse cx="118" cy="102" rx="10" ry="11" fill="#f4f8ec" stroke-width="3.5"/>
+             <circle cx="84" cy="102" r="2" fill="#9aa48e" stroke="none"/><circle cx="118" cy="104" r="2" fill="#9aa48e" stroke="none"/>
+             <path d="M70 82 L92 88 M108 88 L130 84" fill="none" stroke-width="4"/>${nose("#9bb08a")}
+             <path d="M80 130 L88 124 L96 132 L104 124 L112 132 L120 126" fill="none" stroke-width="3.5"/><path d="M66 116 l8 4 M128 120 l6 6" fill="none" stroke="${dark("#9bb08a", 0.4)}" stroke-width="3"/>`,
+    }), bg) },
+];
+
+const items = [
+  { name: "A Lata", role: "O ônibus · base móvel do Seu Valdir", wide: true, color: "#f0a020", art: (bg) => svg("0 0 540 230", `
+      <ellipse cx="270" cy="206" rx="250" ry="10" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="190" y="20" width="110" height="20" rx="6"`, "#c9c9cf", { dx: -3, dy: -3 })}
+      ${S("path", `d="M20 52 Q20 36 38 36 L486 36 Q514 36 518 64 L524 150 Q524 168 506 168 L20 168 Z"`, "#f0a020")}
+      <rect x="20" y="130" width="504" height="16" fill="#2f5fb3" stroke="none"/><path d="M20 130 L524 130 M20 146 L524 146" fill="none" stroke-width="3"/>
+      ${[40, 116, 192, 268].map((x, i) => `${S("rect", `x="${x}" y="56" width="66" height="54" rx="6"`, "#3a5d7a", { dx: 3, dy: 3 })}
+        <path d="M${x + 10} 102 L${x + 32} 62" fill="none" stroke="#9fc6e4" stroke-width="5" opacity=".8"/>
+        ${i < 2 ? `<path d="M${x + 13} 56 L${x + 13} 110 M${x + 26} 56 L${x + 26} 110 M${x + 39} 56 L${x + 39} 110 M${x + 52} 56 L${x + 52} 110" fill="none" stroke="#9a9aa3" stroke-width="4"/><path d="M${x} 83 L${x + 66} 83" fill="none" stroke="#9a9aa3" stroke-width="4"/>` : ""}`).join("")}
+      ${S("rect", `x="350" y="54" width="50" height="108" rx="5"`, "#3a5d7a", { dx: 3, dy: 3 })}<path d="M375 54 L375 162" fill="none" stroke-width="3"/><path d="M358 140 L368 70 M384 140 L394 70" fill="none" stroke="#9fc6e4" stroke-width="4" opacity=".7"/>
+      ${S("path", `d="M420 54 L496 54 Q508 54 510 68 L514 118 L420 118 Z"`, "#7fb2d6", { dx: 3, dy: 3 })}<path d="M440 112 L470 60 M462 112 L486 72" fill="none" stroke="#e8f4ff" stroke-width="6" opacity=".8"/>
+      <path d="M492 112 L470 96" fill="none" stroke-width="4"/>
+      ${S("rect", `x="306" y="10" width="216" height="30" rx="6"`, "#1b1b22", { dx: -2, dy: -2 })}
+      <text x="414" y="31" fill="#ffd34d" stroke="none" font-size="16" font-weight="bold" text-anchor="middle" font-family="DejaVu Sans Mono, monospace">13 CIRCULAR NOTURNO</text>
+      ${S("rect", `x="510" y="68" width="16" height="30" rx="4"`, "#2b2b33", { dx: -2, dy: -2 })}
+      ${S("rect", `x="504" y="128" width="22" height="16" rx="4"`, "#ffe98a", { dx: -2, dy: -2 })}<path d="M528 136 L540 132 M528 140 L540 144" fill="none" stroke="#ffd34d" stroke-width="3"/>
+      ${S("rect", `x="14" y="128" width="10" height="16" rx="3"`, "#d8322f", { dx: -2, dy: -2 })}
+      <path d="M70 168 Q70 132 110 132 Q150 132 150 168 M380 168 Q380 132 420 132 Q460 132 460 168" fill="#1b1b22" stroke="none"/>
+      ${[110, 420].map((cx) => `${S("circle", `cx="${cx}" cy="172" r="30"`, "#2b2b33", { dx: -4, dy: -4 })}${S("circle", `cx="${cx}" cy="172" r="13"`, "#c9c9cf", { dx: -2, dy: -2 })}
+        ${[0, 72, 144, 216, 288].map((a) => `<circle cx="${cx + 7 * Math.cos(a * Math.PI / 180)}" cy="${172 + 7 * Math.sin(a * Math.PI / 180)}" r="1.8" fill="${INK}" stroke="none"/>`).join("")}`).join("")}
+      <path d="M200 150 L230 150 M240 150 L260 150" fill="none" stroke="${dark("#f0a020", 0.35)}" stroke-width="3"/>`, bg) },
+  { name: "Extintor", role: "Seu Valdir · dura três usos", color: "#d8322f", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="118" cy="204" rx="50" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="86" y="56" width="64" height="142" rx="24"`, "#d8322f")}${shine(100, 74, 9, 44, 0)}
+      ${S("rect", `x="96" y="104" width="44" height="50" rx="4"`, "#f4f4f4", { dx: -2, dy: -2 })}<path d="M104 118 L132 118 M104 128 L128 128 M104 138 L124 138" fill="none" stroke-width="2.5"/>
+      ${S("rect", `x="102" y="30" width="32" height="28" rx="5"`, "#a3a3ab", { dx: -3, dy: -3 })}<path d="M120 30 L156 20" fill="none" stroke-width="7"/>
+      ${S("circle", `cx="146" cy="44" r="10"`, "#f4f4f4", { dx: -2, dy: -2 })}<path d="M146 44 L151 39" fill="none" stroke="#d8322f" stroke-width="2.5"/>
+      <path d="M102 42 Q58 42 54 92 Q52 124 70 132" fill="none" stroke-width="10"/><path d="M102 42 Q58 42 54 92 Q52 124 70 132" fill="none" stroke="#3a3a44" stroke-width="5"/>
+      ${S("path", `d="M64 128 L80 138 L74 150 L58 140 Z"`, "#2b2b33", { dx: -2, dy: -2 })}`, bg) },
+  { name: "Mochila térmica", role: "Jé · escudo e despensa", color: "#d8322f", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="204" rx="78" ry="8" fill="${INK}" opacity=".18" stroke="none"/>
+      <path d="M66 54 Q66 28 92 28 L148 28 Q174 28 174 54" fill="none" stroke-width="10"/><path d="M66 54 Q66 28 92 28 L148 28 Q174 28 174 54" fill="none" stroke="#3a3a44" stroke-width="4"/>
+      ${S("rect", `x="46" y="48" width="148" height="148" rx="16"`, "#d8322f")}
+      <path d="M46 84 L194 84" fill="none" stroke-width="3"/><path d="M60 84 Q60 70 74 70 L166 70 Q180 70 180 84" fill="none" stroke="#a82420" stroke-width="3"/>
+      ${S("rect", `x="108" y="92" width="24" height="14" rx="4"`, "#2a2f3a", { dx: -2, dy: -2 })}
+      <rect x="64" y="146" width="112" height="16" fill="#f4f4f4" stroke-width="3"/><rect x="64" y="146" width="112" height="16" fill="url(#none)" stroke="none"/>
+      <path d="M72 146 L80 162 M92 146 L100 162 M112 146 L120 162 M132 146 L140 162 M152 146 L160 162" fill="none" stroke="#c9c9cf" stroke-width="3"/>
+      ${shine(60, 104, 8, 30, 0)}`, bg) },
+  { name: "Guarda-chuva", role: "Professor Otávio · quebra na hora errada", color: "#3a5d7a", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="60" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("path", `d="M24 104 Q120 -6 216 104 Q200 90 184 104 Q168 90 152 104 Q136 90 120 104 Q104 90 88 104 Q72 90 56 104 Q40 90 24 104 Z"`, "#2a2f3a", { dx: -6, dy: -6 })}
+      <path d="M120 32 Q88 60 56 104 M120 32 Q104 64 88 104 M120 32 L120 104 M120 32 Q136 64 152 104 M120 32 Q152 60 184 104" fill="none" stroke="#4a5060" stroke-width="3"/>
+      <path d="M60 70 Q86 40 112 36" fill="none" stroke="#6a7488" stroke-width="5" opacity=".9"/>
+      <path d="M120 104 L120 178" fill="none" stroke-width="7"/><path d="M120 104 L120 178" fill="none" stroke="#a3a3ab" stroke-width="3"/>
+      ${S("path", `d="M114 176 L126 176 L126 186 Q126 202 108 202 Q90 202 90 186 L90 180 L100 180 L100 186 Q100 192 108 192 Q114 192 114 186 Z"`, "#a86f32", { dx: -2, dy: -2 })}
+      <path d="M120 32 L120 14" fill="none" stroke-width="5"/>
+      <path d="M176 112 l10 10 m0 -10 l-10 10" fill="none" stroke="#d8322f" stroke-width="3"/>`, bg) },
+  { name: "Bomba de fumaça", role: "Professor Otávio · erra uma em cada três", color: "#7fe0a8", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="60" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("circle", `cx="94" cy="44" r="18"`, "#c9c9cf", { dx: -3, dy: -3 })}${S("circle", `cx="124" cy="30" r="23"`, "#dedee4", { dx: -3, dy: -3 })}${S("circle", `cx="152" cy="46" r="16"`, "#c9c9cf", { dx: -3, dy: -3 })}
+      ${S("rect", `x="104" y="64" width="32" height="20" rx="4"`, "#a86f32", { dx: -2, dy: -2 })}
+      <path d="M108 84 L108 116 L68 186 Q64 198 78 198 L162 198 Q176 198 172 186 L132 116 L132 84 Z" fill="#eef6ff"/>
+      <path d="M88 150 Q104 142 120 150 Q136 158 152 150 L172 186 Q176 198 162 198 L78 198 Q64 198 68 186 Z" fill="#7fe0a8" stroke-width="3"/>
+      <path d="M108 84 L108 116 L68 186 Q64 198 78 198 L162 198 Q176 198 172 186 L132 116 L132 84 Z" fill="none"/>
+      <circle cx="102" cy="174" r="6" fill="#fff" stroke-width="2"/><circle cx="128" cy="164" r="4" fill="#fff" stroke-width="2"/><circle cx="144" cy="182" r="3" fill="#fff" stroke-width="2"/>
+      ${shine(86, 160, 6, 24, 30)}
+      ${S("path", `d="M134 96 L204 86 L208 106 L138 116 Z"`, "#f4e2c0", { dx: -2, dy: -2 })}
+      <text x="171" y="105" fill="${INK}" stroke="none" font-size="10" font-weight="bold" text-anchor="middle" transform="rotate(-8 160 104)">NÃO MEXER</text>`, bg) },
+  { name: "Carrinho de feira", role: "Dona Cida · aríete", color: "#3a7bd5", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="116" cy="204" rx="66" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      <path d="M172 26 L160 154" fill="none" stroke-width="8"/><path d="M172 26 L160 154" fill="none" stroke="#a3a3ab" stroke-width="3"/>
+      ${S("rect", `x="156" y="16" width="34" height="16" rx="6"`, "#2b2b33", { dx: -2, dy: -2 })}
+      ${S("rect", `x="58" y="58" width="104" height="106" rx="7"`, "#3a7bd5")}
+      <path d="M58 93 L162 93 M58 128 L162 128 M93 58 L93 164 M128 58 L128 164" fill="none" stroke-width="3"/>
+      ${S("path", `d="M66 46 Q78 30 92 46 Q100 26 116 46 Q128 30 140 48 L150 58 L64 58 Z"`, "#7fc04a", { dx: -2, dy: -2 })}
+      ${S("circle", `cx="132" cy="46" r="12"`, "#d8322f", { dx: -2, dy: -2 })}${S("circle", `cx="84" cy="48" r="10"`, "#f0a020", { dx: -2, dy: -2 })}
+      ${[78, 146].map((cx) => `${S("circle", `cx="${cx}" cy="180" r="18"`, "#2b2b33", { dx: -3, dy: -3 })}${S("circle", `cx="${cx}" cy="180" r="6"`, "#c9c9cf", { dx: -1, dy: -1 })}`).join("")}`, bg) },
+  { name: "Bolo de pote", role: "Dona Cida · isca de zumbi", color: "#f07fb0", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="120" cy="206" rx="54" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="72" y="36" width="96" height="28" rx="7"`, "#f07fb0", { dx: -3, dy: -3 })}<path d="M80 50 L160 50" fill="none" stroke="#c85a8a" stroke-width="3"/>
+      <path d="M76 64 L164 64 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="#eef6ff"/>
+      <path d="M79 92 L161 92 L160 118 L80 118 Z" fill="#6b3a1f" stroke-width="3"/>
+      <path d="M80 118 L160 118 L159 140 L81 140 Z" fill="#f4e2c0" stroke-width="3"/>
+      <path d="M81 140 L159 140 L158 170 L82 170 Z" fill="#6b3a1f" stroke-width="3"/>
+      <path d="M82 170 L158 170 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="#f4e2c0" stroke-width="3"/>
+      <path d="M80 118 Q90 126 100 118 Q110 126 120 118 Q130 126 140 118 Q150 126 160 118" fill="none" stroke="#6b3a1f" stroke-width="4"/>
+      <path d="M76 64 L164 64 L158 192 Q158 198 152 198 L88 198 Q82 198 82 192 Z" fill="none"/>
+      ${shine(90, 74, 7, 110, 0)}
+      <path d="M150 44 L198 6" fill="none" stroke-width="7"/><path d="M150 44 L198 6" fill="none" stroke="#c9c9cf" stroke-width="3"/>
+      ${S("rect", `x="168" y="132" width="44" height="26" rx="4"`, "#ffd34d", { dx: -2, dy: -2 })}<path d="M164 128 L170 134" fill="none" stroke-width="2.5"/>
+      <text x="190" y="150" fill="${INK}" stroke="none" font-size="13" font-weight="bold" text-anchor="middle">R$ 5</text>`, bg) },
+  { name: "Celular e caixinha de som", role: "Kauã · atrai a horda para longe", color: "#f2c230", art: (bg) => svg("0 0 240 220", `
+      <ellipse cx="124" cy="206" rx="86" ry="7" fill="${INK}" opacity=".18" stroke="none"/>
+      ${S("rect", `x="36" y="34" width="76" height="140" rx="13"`, "#1b1b22", { dx: -3, dy: -3 })}<rect x="46" y="50" width="56" height="106" rx="4" fill="#3a5d7a" stroke-width="3"/>
+      <rect x="56" y="62" width="36" height="17" rx="3" fill="#f4f4f4" stroke-width="2"/><rect x="58" y="64" width="5" height="13" fill="#ff4d4d" stroke="none"/><rect x="92" y="66" width="4" height="9" fill="${INK}" stroke="none"/>
+      <text x="74" y="120" fill="#ff4d4d" stroke="none" font-size="24" font-weight="bold" text-anchor="middle">3%</text>
+      <path d="M50 140 L64 126 L60 144 L76 130" fill="none" stroke="#e8f4ff" stroke-width="2" opacity=".9"/>
+      ${S("rect", `x="130" y="92" width="66" height="102" rx="18"`, "#f2c230")}
+      <circle cx="163" cy="146" r="23" fill="#2b2b33"/><circle cx="163" cy="146" r="9" fill="#a3a3ab"/>
+      ${[0, 1, 2, 3, 4].map((i) => `<circle cx="${145 + i * 9}" cy="108" r="2.2" fill="${INK}" stroke="none"/>`).join("")}
+      ${shine(140, 100, 6, 30, 0)}
+      <path d="M206 118 Q218 136 206 154 M216 104 Q238 136 216 168" fill="none" stroke-width="4"/>`, bg) },
+];
+
+function buildCena1() {
+const W = 1080, H = 1920;
+const nest = (art, x, y, w, h) => art.replace("<svg ", `<svg x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet" `);
+const kaua = chars.find((c) => c.name === "Kauã").art("");
+const lerdo = chars.find((c) => c.name === "Lerdo comum").art("");
+const kauaOpen = kaua.replace('<path d="M84 122 Q100 146 116 122 Z" fill="#7a2e2e" stroke-width="3.5"/><path d="M88 124 L112 124" fill="none" stroke="#fff" stroke-width="4"/>', '<ellipse cx="100" cy="132" rx="15" ry="18" fill="#7a2e2e" stroke-width="3.5"/><path d="M90 119 L110 119" fill="none" stroke="#fff" stroke-width="4"/>');
+function araucaria(x, base, h, c) {
+  const t = [];
+  for (let i = 0; i < 4; i++) {
+    const y = base - h + i * h * 0.12, w = h * (0.18 + i * 0.07);
+    t.push(`<path d="M${x - w} ${y + 18} Q${x} ${y - 22} ${x + w} ${y + 18} Q${x} ${y + 2} ${x - w} ${y + 18} Z" fill="${c}"/>`);
+  }
+  return `<rect x="${x - 5}" y="${base - h * 0.75}" width="10" height="${h * 0.75}" fill="${c}"/>${t.join("")}`;
+}
+const stars = Array.from({ length: 40 }, (_, i) => `<circle cx="${(i * 197) % 960 + 60}" cy="${(i * 89) % 260 + 340}" r="${i % 3 ? 2 : 3}" fill="#fff" opacity="${0.3 + (i % 5) * 0.12}"/>`).join("");
+const buildings = [[80, 120, 230], [210, 90, 300], [310, 140, 200], [470, 100, 330], [590, 130, 250], [740, 110, 290], [860, 150, 220]].map(([x, w, h]) =>
+  `<rect x="${x}" y="${850 - h}" width="${w}" height="${h}" fill="#1a2440"/>` +
+  Array.from({ length: Math.floor(h / 40) * 3 }, (_, i) => { const cx = x + 16 + (i % 3) * (w - 32) / 2, cy = 850 - h + 20 + Math.floor(i / 3) * 40; return (i * 7) % 5 < 2 ? `<rect x="${cx - 7}" y="${cy}" width="14" height="18" fill="#ffd77a" opacity=".85"/>` : ""; }).join("")).join("");
+
+const svgScene = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset="1" stop-color="#28345e"/></linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4a66"/><stop offset="1" stop-color="#1e2738"/></linearGradient>
+    <radialGradient id="lamp" cx="0.5" cy="0" r="0.9"><stop offset="0" stop-color="#e9fbff" stop-opacity=".35"/><stop offset="1" stop-color="#e9fbff" stop-opacity="0"/></radialGradient>
+    <clipPath id="win"><rect x="60" y="330" width="960" height="520" rx="34"/></clipPath>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#wall)"/>
+  <rect x="0" y="0" width="${W}" height="250" fill="#4a5a76"/>
+  <rect x="140" y="110" width="800" height="34" rx="17" fill="#f4fbff" stroke="${INK}" stroke-width="6"/>
+  <rect x="0" y="0" width="${W}" height="1100" fill="url(#lamp)"/>
+  <path d="M0 250 L${W} 250" stroke="${INK}" stroke-width="6"/>
+  <g id="win"><g clip-path="url(#win)">
+    <rect x="60" y="330" width="960" height="520" fill="url(#sky)"/>
+    ${stars}
+    <circle cx="880" cy="420" r="46" fill="#fff6d6"/><circle cx="900" cy="408" r="40" fill="#28345e" opacity=".0"/>
+    ${buildings}
+    ${araucaria(150, 860, 300, "#0e1628")}${araucaria(640, 860, 360, "#0e1628")}${araucaria(980, 860, 260, "#0e1628")}
+    <g id="zomb">${nest(lerdo, 330, 300, 520, 910)}</g>
+    <path d="M120 820 L330 360 M210 830 L380 470 M760 830 L930 400" stroke="#ffffff" stroke-width="18" opacity=".10"/>
+  </g>
+  <rect x="60" y="330" width="960" height="520" rx="34" fill="none" stroke="${INK}" stroke-width="14"/>
+  <rect x="44" y="314" width="992" height="552" rx="44" fill="none" stroke="#8a97ab" stroke-width="10"/>
+  <path d="M300 330 L300 850" stroke="${INK}" stroke-width="12"/></g>
+  <g stroke="${INK}" stroke-width="6">
+    <rect x="-40" y="1180" width="300" height="360" rx="40" fill="#f0a020"/><rect x="-40" y="1180" width="300" height="70" rx="30" fill="#2f5fb3"/>
+    <rect x="830" y="1180" width="300" height="360" rx="40" fill="#f0a020"/><rect x="830" y="1180" width="300" height="70" rx="30" fill="#2f5fb3"/>
+    <rect x="900" y="250" width="34" height="1700" fill="#ffd34d"/><path d="M908 250 L908 1950" stroke="#fff6c2" stroke-width="6"/>
+  </g>
+  <g id="kaua"><g id="kC">${nest(kaua, 90, 640, 900, 1575)}</g><g id="kO" style="display:none">${nest(kauaOpen, 90, 640, 900, 1575)}</g></g>
+  <g id="shout"><g stroke="${INK}" stroke-width="12" stroke-linecap="round" fill="none">
+    <path d="M150 980 L90 940"/><path d="M130 1060 L60 1060"/><path d="M160 900 L120 840"/>
+  </g>
+  <g stroke="#ffd34d" stroke-width="6" stroke-linecap="round" fill="none">
+    <path d="M150 980 L90 940"/><path d="M130 1060 L60 1060"/><path d="M160 900 L120 840"/>
+  </g></g>
+  <g font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold">
+    <rect x="60" y="190" width="420" height="84" rx="16" fill="${INK}"/>
+    <text x="270" y="246" fill="#ffd34d" font-size="40" text-anchor="middle" letter-spacing="2">CURITIBA, 23h40</text>
+    <rect x="880" y="190" width="140" height="84" rx="16" fill="#d8322f" stroke="${INK}" stroke-width="5"/>
+    <text x="950" y="246" fill="#fff" font-size="38" text-anchor="middle">EP. 1</text>
+    <text x="540" y="1560" fill="#f2c230" font-size="44" text-anchor="middle" stroke="${INK}" stroke-width="12" paint-order="stroke" letter-spacing="4">KAUÃ</text>
+    <text x="540" y="1650" fill="#fff" font-size="86" text-anchor="middle" stroke="${INK}" stroke-width="18" paint-order="stroke"><tspan id="w1">GALERA,</tspan> <tspan id="w2">ISSO AQUI</tspan></text>
+    <text id="w3" x="540" y="1750" fill="#fff" font-size="86" text-anchor="middle" stroke="${INK}" stroke-width="18" paint-order="stroke">TÁ SURREAL!</text>
+  </g>
+</svg>`;
+
+  const inner = svgScene.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+  return inner.replace(/<text x="540" y="1560"[\s\S]*?TÁ SURREAL!<\/text>/, "");
+}
+const SPEECH = [
+{
+"file": "kaua_a",
+"who": "kaua",
+"t0": 0.35,
+"t1": 1.8,
+"label": "KAUÃ",
+"text": "Galera, isso aqui tá surreal!"
+},
+{
+"file": "kaua_b",
+"who": "kaua",
+"t0": 3.3,
+"t1": 5.32,
+"label": "KAUÃ",
+"text": "Seu Valdir, tem um cara mordendo o retrovisor!"
+},
+{
+"file": "valdir_a",
+"who": "valdir",
+"t0": 5.8,
+"t1": 7.0,
+"label": "SEU VALDIR",
+"text": "Fora do ponto ninguém sobe."
+},
+{
+"file": "cida_a",
+"who": "cida",
+"t0": 9.2,
+"t1": 12.05,
+"label": "DONA CIDA",
+"text": "Boa noite, motorista. Aceita um bolinho?"
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 12.5,
+"t1": 12.79,
+"label": "REX",
+"text": "Au! Au!"
+},
+{
+"file": "otavio_a",
+"who": "otavio",
+"t0": 14.6,
+"t1": 17.05,
+"label": "PROFESSOR OTÁVIO",
+"text": "Tecnicamente, aquilo lá fora são cadáveres andando."
+},
+{
+"file": "cida_b",
+"who": "cida",
+"t0": 17.6,
+"t1": 18.93,
+"label": "DONA CIDA",
+"text": "Come que passa."
+},
+{
+"file": "je_a",
+"who": "je",
+"t0": 23.6,
+"t1": 25.06,
+"label": "JÉ",
+"text": "Cinco estrelas pra mim, hein?"
+},
+{
+"file": "valdir_b",
+"who": "valdir",
+"t0": 30.4,
+"t1": 31.26,
+"label": "SEU VALDIR",
+"text": "Cartão ou dinheiro?"
+},
+{
+"file": "valdir_c",
+"who": "valdir",
+"t0": 33.8,
+"t1": 35.53,
+"label": "SEU VALDIR",
+"text": "Aqui é linha, não é academia."
+},
+{
+"file": "kaua_c",
+"who": "kaua",
+"t0": 40.4,
+"t1": 41.35,
+"label": "KAUÃ",
+"text": "Desde quando ele tá aí?"
+},
+{
+"file": "valdir_d",
+"who": "valdir",
+"t0": 43.0,
+"t1": 45.76,
+"label": "SEU VALDIR",
+"text": "Temos diesel pra uma parada. Ou o posto, ou o terminal."
+},
+{
+"file": "je_b",
+"who": "je",
+"t0": 46.3,
+"t1": 47.57,
+"label": "JÉ",
+"text": "No posto tem tomada."
+},
+{
+"file": "kaua_d",
+"who": "kaua",
+"t0": 48.2,
+"t1": 48.59,
+"label": "KAUÃ",
+"text": "TOMADA?!"
+},
+{
+"file": "kaua_e",
+"who": "kaua",
+"t0": 51.8,
+"t1": 53.87,
+"label": "KAUÃ",
+"text": "Vocês decidem. Mas comenta baixo."
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 54.6,
+"t1": 54.89,
+"label": "REX",
+"text": "Au! Au!"
+}
+];
+// Linha Final, episódio 1: "Última Parada". Timeline engine + 10 scenes.
+const W = 1080, H = 1920;
+const $ = (id) => document.getElementById(id);
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const easeOut = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const easeInOut = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const backOut = (x) => { const c = 1.9; x = clamp(x); return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const FONT = `font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold"`;
+const nestArt = (art, x, y, w, h) => art.replace("<svg ", `<svg x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMax meet" `);
+const charBy = (n) => chars.find((c) => c.name === n);
+const itemBy = (n) => items.find((c) => c.name === n);
+let seed = 1;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+// --- talking mouths -------------------------------------------------------
+const MOUTH = {
+  valdir: ["Seu Valdir", '<path d="M90 138 Q100 142 110 138" fill="none" stroke-width="3.5"/>', '<ellipse cx="100" cy="139" rx="9" ry="8" fill="#7a2e2e" stroke-width="3.5"/>'],
+  je: ["Jé", '<path d="M86 130 Q104 138 118 124" fill="none" stroke-width="4"/>', '<ellipse cx="102" cy="131" rx="11" ry="10" fill="#7a2e2e" stroke-width="3.5"/>'],
+  otavio: ["Professor Otávio", '<path d="M84 130 q4 -5 8 0 t8 0 t8 0 t8 0" fill="none" stroke-width="3.5"/>', '<ellipse cx="100" cy="131" rx="10" ry="11" fill="#7a2e2e" stroke-width="3.5"/>'],
+  cida: ["Dona Cida", '<path d="M82 126 Q100 144 118 126 Q100 134 82 126 Z" fill="#7a2e2e" stroke-width="3.5"/>', '<ellipse cx="100" cy="132" rx="13" ry="11" fill="#7a2e2e" stroke-width="3.5"/>'],
+  kaua: ["Kauã", '<path d="M84 122 Q100 146 116 122 Z" fill="#7a2e2e" stroke-width="3.5"/><path d="M88 124 L112 124" fill="none" stroke="#fff" stroke-width="4"/>', '<ellipse cx="100" cy="132" rx="15" ry="18" fill="#7a2e2e" stroke-width="3.5"/><path d="M90 119 L110 119" fill="none" stroke="#fff" stroke-width="4"/>'],
+};
+const artOf = (who, open) => {
+  const [name, closed, opened] = MOUTH[who];
+  const a = charBy(name).art("");
+  return open ? a.replace(closed, opened) : a;
+};
+// An actor that can talk: both mouth states drawn, one shown at a time.
+function actor(who, id, x, y, w, h) {
+  return `<g id="${id}"><g id="${id}C">${nestArt(artOf(who, false), x, y, w, h)}</g><g id="${id}O" style="display:none">${nestArt(artOf(who, true), x, y, w, h)}</g></g>`;
+}
+const talking = (who, T) => SPEECH.some((s) => s.who === who && T >= s.t0 && T < s.t1);
+function mouth(id, who, T) {
+  const s = SPEECH.find((s) => s.who === who && T >= s.t0 && T < s.t1);
+  const open = !!s && Math.floor((T - s.t0) * 9) % 2 === 0;
+  $(id + "C").style.display = open ? "none" : "";
+  $(id + "O").style.display = open ? "" : "none";
+}
+
+// --- shared pieces ----------------------------------------------------------
+function araucaria(x, base, h, c) {
+  const t = [];
+  for (let i = 0; i < 4; i++) { const y = base - h + i * h * 0.12, w = h * (0.18 + i * 0.07); t.push(`<path d="M${x - w} ${y + 18} Q${x} ${y - 22} ${x + w} ${y + 18} Q${x} ${y + 2} ${x - w} ${y + 18} Z" fill="${c}"/>`); }
+  return `<rect x="${x - 5}" y="${base - h * 0.75}" width="10" height="${h * 0.75}" fill="${c}"/>${t.join("")}`;
+}
+function nightView(id, x, y, w, h, inner = "") {
+  seed = x + y + 3;
+  const stars = Array.from({ length: 24 }, () => `<circle cx="${x + rnd() * w}" cy="${y + rnd() * h * 0.5}" r="${1.5 + rnd() * 2}" fill="#fff" opacity="${0.3 + rnd() * 0.5}"/>`).join("");
+  const blds = Array.from({ length: 7 }, (_, i) => { const bw = w / 7, bh = h * (0.25 + rnd() * 0.3); return `<rect x="${x + i * bw}" y="${y + h - bh}" width="${bw - 6}" height="${bh}" fill="#1a2440"/>` + Array.from({ length: 6 }, (_, j) => (rnd() < 0.5 ? `<rect x="${x + i * bw + 12 + (j % 2) * (bw / 2 - 10)}" y="${y + h - bh + 16 + Math.floor(j / 2) * 34}" width="12" height="16" fill="#ffd77a" opacity=".85"/>` : "")).join(""); }).join("");
+  return `<defs><clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="26"/></clipPath><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset="1" stop-color="#28345e"/></linearGradient></defs>
+    <g clip-path="url(#${id})"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${id}s)"/>${stars}${blds}
+      ${araucaria(x + w * 0.2, y + h, h * 0.6, "#0e1628")}${araucaria(x + w * 0.8, y + h, h * 0.5, "#0e1628")}${inner}
+      <path d="M${x + 40} ${y + h} L${x + w * 0.35} ${y}" stroke="#fff" stroke-width="16" opacity=".08"/></g>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="26" fill="none" stroke="${INK}" stroke-width="12"/>`;
+}
+const interior = () => `<defs><linearGradient id="wallG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4a66"/><stop offset="1" stop-color="#1e2738"/></linearGradient></defs>
+  <rect width="${W}" height="${H}" fill="url(#wallG)"/><rect width="${W}" height="230" fill="#4a5a76"/>
+  <rect x="140" y="100" width="800" height="32" rx="16" fill="#f4fbff" stroke="${INK}" stroke-width="6"/>`;
+const seatRow = (x, y, w, h) => `<g stroke="${INK}" stroke-width="6"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="34" fill="#f0a020"/><rect x="${x}" y="${y}" width="${w}" height="60" rx="26" fill="#2f5fb3"/></g>`;
+function tag(text, x, y, bg = INK, fg = "#ffd34d", size = 40, id = "") {
+  const w = text.length * size * 0.66 + 60;
+  return `<g ${id ? `id="${id}"` : ""} ${FONT}><rect x="${x - w / 2}" y="${y - size - 18}" width="${w}" height="${size + 40}" rx="16" fill="${bg}" stroke="${INK}" stroke-width="5"/><text x="${x}" y="${y + 4}" fill="${fg}" font-size="${size}" text-anchor="middle" letter-spacing="2">${text}</text></g>`;
+}
+const corredor = (x, y, w, h) => nestArt(charBy("Lerdo comum").art("")
+  .replace('fill="#3a3a30"', 'fill="#3a3a30"'), x, y, w, h) +
+  `<g ${O}><rect x="${x + w * 0.28}" y="${y + h * 0.62}" width="${w * 0.42}" height="${h * 0.06}" rx="10" fill="#e8453c"/><rect x="${x + w * 0.3}" y="${y + h * 0.13}" width="${w * 0.46}" height="${h * 0.03}" rx="6" fill="#f4f4f4"/></g>`;
+function caption(lines, y, size, fill = "#fff", id = "") {
+  return `<g ${id ? `id="${id}"` : ""} ${FONT} text-anchor="middle">${lines.map((l, i) => `<text x="${W / 2}" y="${y + i * size * 1.15}" font-size="${size}" fill="${fill}" stroke="${INK}" stroke-width="${size / 5}" paint-order="stroke">${l}</text>`).join("")}</g>`;
+}
+function puffs(id) { return `<g id="${id}"></g>`; }
+function drawPuffs(id, t, x0, y0, dx) {
+  let s = "";
+  for (let i = 0; i < 9; i++) { const p = clamp(t * 2.2 - i * 0.12); if (p > 0 && p < 1) s += `<circle cx="${x0 + p * dx}" cy="${y0 + Math.sin(i * 2) * 60 * p}" r="${26 + p * 110}" fill="#ffffff" opacity="${0.92 - p * 0.6}" stroke="${INK}" stroke-width="5"/>`; }
+  $(id).innerHTML = s;
+}
+const doorView = (outside, id = "dv") => `
+  ${interior()}
+  <rect x="160" y="300" width="760" height="1420" rx="20" fill="#2b2b33" stroke="${INK}" stroke-width="10"/>
+  <defs><clipPath id="${id}c"><rect x="180" y="320" width="720" height="1380" rx="12"/></clipPath>
+    <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset=".6" stop-color="#29355e"/><stop offset="1" stop-color="#3a3a44"/></linearGradient></defs>
+  <g clip-path="url(#${id}c)"><rect x="180" y="320" width="720" height="1380" fill="url(#${id}g)"/>
+    <rect x="180" y="1460" width="720" height="240" fill="#5a5a64"/><path d="M180 1460 L900 1460" stroke="${INK}" stroke-width="6"/>
+    ${outside}</g>
+  <g id="${id}L"><rect x="180" y="320" width="360" height="1380" fill="#7fb2d6" opacity=".28" stroke="${INK}" stroke-width="8"/><path d="M200 1100 L400 400" stroke="#fff" stroke-width="14" opacity=".2"/></g>
+  <g id="${id}R"><rect x="540" y="320" width="360" height="1380" fill="#7fb2d6" opacity=".28" stroke="${INK}" stroke-width="8"/><path d="M580 1100 L780 400" stroke="#fff" stroke-width="14" opacity=".2"/></g>
+  <rect x="900" y="230" width="30" height="1690" fill="#ffd34d" stroke="${INK}" stroke-width="6"/>`;
+const openDoor = (id, k) => { $(id + "L").setAttribute("transform", `translate(${-330 * k} 0)`); $(id + "R").setAttribute("transform", `translate(${330 * k} 0)`); };
+
+// --- scenes -----------------------------------------------------------------
+const scenes = [];
+// 1 (0–3): Kauã's selfie, the Lerdo slams the window.
+scenes.push([0, 3, () => buildCena1(), (t, T) => {
+  const talkNow = talking("kaua", T);
+  const s = SPEECH.find((s) => s.who === "kaua" && T >= s.t0 && T < s.t1);
+  const open = !!s && Math.floor((T - s.t0) * 9) % 2 === 0;
+  $("kC").style.display = open ? "none" : ""; $("kO").style.display = open ? "" : "none";
+  $("kaua").setAttribute("transform", `translate(0 ${talkNow ? Math.sin(t * 16) * 7 : Math.sin(t * 3) * 3})`);
+  $("shout").style.display = talkNow ? "" : "none";
+  const rise = backOut((t - 1.2) / 0.25), turn = clamp((t - 1.95) / 0.45);
+  $("zomb").setAttribute("transform", `translate(${-26 * turn} ${(1 - rise) * 560}) rotate(${-9 * turn} 580 620)`);
+  $("win").setAttribute("transform", `translate(${t > 1.42 && t < 1.75 ? Math.sin(t * 90) * 10 : 0} 0)`);
+}]);
+
+// 2 (3–8): Valdir drives, calm, a Lerdo chewing the side mirror.
+scenes.push([3, 8, () => `
+  ${interior()}
+  ${nightView("ws", 60, 280, 960, 560, `<g id="road">${Array.from({ length: 8 }, (_, i) => `<rect x="${500 + i * 10}" y="${700 + i * 20}" width="${14 + i * 6}" height="${30 + i * 8}" fill="#ffd34d" opacity=".6"/>`).join("")}</g>`)}
+  <g transform="translate(860 520)"><g id="mirror">
+    <g ${O}><rect x="40" y="-10" width="16" height="120" fill="#2b2b33"/><rect x="0" y="60" width="150" height="190" rx="24" fill="#2b2b33"/><rect x="14" y="74" width="122" height="162" rx="16" fill="#7fb2d6"/></g>
+    ${nestArt(charBy("Lerdo comum").art(""), -40, -60, 230, 403)}
+  </g></g>
+  <rect x="0" y="1260" width="${W}" height="660" fill="#22262f" stroke="${INK}" stroke-width="8"/>
+  ${actor("valdir", "va", 140, 760, 620, 1085)}
+  <g ${O} stroke-width="12"><ellipse cx="450" cy="1330" rx="300" ry="90" fill="none" stroke="#1b1b22" stroke-width="44"/><ellipse cx="450" cy="1330" rx="300" ry="90" fill="none" stroke="#3a3a44" stroke-width="20"/><rect x="420" y="1300" width="60" height="140" fill="#2b2b33"/></g>
+  <rect x="0" y="1400" width="${W}" height="520" fill="#2b2f3a" stroke="${INK}" stroke-width="8"/>
+  <g id="kpeek">${actor("kaua", "kp", 700, 1080, 480, 840)}</g>`,
+  (t, T) => {
+    mouth("va", "valdir", T); mouth("kp", "kaua", T);
+    $("mirror").setAttribute("transform", `rotate(${Math.sin(t * 18) * 3})`);
+    $("road").setAttribute("transform", `translate(0 ${(t * 80) % 40})`);
+    $("kpeek").setAttribute("transform", `translate(${(1 - easeOut((t - 0.1) / 0.3)) * 500 + (t > 2.6 ? easeOut((t - 2.6) / 0.4) * 500 : 0)} 0)`);
+    $("va").setAttribute("transform", `translate(0 ${Math.sin(t * 2) * 3})`);
+  }]);
+
+// 3 (8–14): terminal stop — Dona Cida and Rex at the door.
+scenes.push([8, 14, () => doorView(`
+    <rect x="620" y="560" width="220" height="70" rx="10" fill="#1b1b22" stroke="${INK}" stroke-width="5"/>
+    <text x="730" y="608" ${FONT} font-size="34" fill="#ffd34d" text-anchor="middle">TERMINAL</text>
+    <rect x="720" y="630" width="14" height="840" fill="#3a3a44"/>
+    <g id="cidaG">${actor("cida", "ci", 260, 700, 560, 980)}</g>
+    <g id="rexG">${nestArt(charBy("Rex").art(""), 560, 1150, 320, 560)}</g>`),
+  (t, T) => {
+    openDoor("dv", easeInOut((t - 0.3) / 0.6));
+    mouth("ci", "cida", T);
+    $("cidaG").setAttribute("transform", `translate(0 ${Math.sin(t * 3) * 4})`);
+    const bark = talking("rex", T);
+    $("rexG").setAttribute("transform", `translate(0 ${bark ? -26 : 0})`);
+  }]);
+
+// 4 (14–20): Professor Otávio runs in under an open umbrella; Cida offers cake.
+scenes.push([14, 20, () => `
+  ${interior()}
+  ${nightView("w4", 60, 300, 960, 460)}
+  ${seatRow(-60, 1300, 380, 560)}${seatRow(760, 1300, 380, 560)}
+  <g id="cida4">${actor("cida", "c4", -40, 760, 560, 980)}
+    <g transform="translate(330 1250) scale(.42)">${nestArt(itemBy("Bolo de pote").art(""), 0, 0, 240, 220)}</g></g>
+  <g id="ota">${actor("otavio", "ot", 420, 640, 640, 1120)}
+    <g transform="translate(470 320)"><g id="umb">${nestArt(itemBy("Guarda-chuva").art(""), 0, 0, 560, 513)}</g></g></g>`,
+  (t, T) => {
+    mouth("c4", "cida", T); mouth("ot", "otavio", T);
+    const inK = easeOut(t / 0.7);
+    $("ota").setAttribute("transform", `translate(${(1 - inK) * 700 + Math.sin(t * 40) * 3} ${Math.abs(Math.sin(t * 10)) * (t < 0.7 ? 20 : 0)})`);
+    $("umb").setAttribute("transform", `rotate(${Math.sin(t * 20) * 3} 280 200)`);
+    const offer = easeOut((t - 3.4) / 0.4);
+    $("cida4").setAttribute("transform", `translate(${offer * 60} 0)`);
+  }]);
+
+// 5 (20–26): Jé outruns a Corredor and dives through the window.
+scenes.push([20, 23.3, () => `
+  <defs><linearGradient id="sky5" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070d22"/><stop offset="1" stop-color="#2a3660"/></linearGradient></defs>
+  <rect width="${W}" height="${H}" fill="url(#sky5)"/><circle cx="880" cy="360" r="60" fill="#fff6d6"/>
+  ${[80, 380, 700, 1000].map((x, i) => araucaria(x, 1180, 360 + (i % 2) * 100, "#0d1530")).join("")}
+  <rect x="0" y="1180" width="${W}" height="740" fill="#1a1f2c"/>
+  ${nestArt(itemBy("A Lata").art(""), 360, 880, 1000, 426)}
+  <g id="je5">${nestArt(charBy("Jé").art(""), 0, 0, 300, 525)}</g>
+  <g id="cor5">${corredor(0, 0, 320, 560)}</g>`,
+  (t) => {
+    const run = clamp(t / 2.0);
+    const jx = -300 + run * 620, jy = 1200 + Math.abs(Math.sin(t * 14)) * -24;
+    let x = jx, y = jy, rot = 0, sc = 1;
+    if (t > 2.0) { const k = clamp((t - 2.0) / 0.6); x = 320 + k * 220; y = 1200 - Math.sin(k * Math.PI) * 420 - k * 120; rot = k * 40; sc = 1 - k * 0.35; }
+    $("je5").setAttribute("transform", `translate(${x} ${y - 525}) rotate(${rot} 150 260) scale(${sc})`);
+    $("je5").style.display = t > 2.6 ? "none" : "";
+    const cx = -560 + clamp(t / 2.6) * 820;
+    $("cor5").setAttribute("transform", `translate(${cx} ${1190 - 560 + Math.abs(Math.sin(t * 12)) * -18})`);
+  }]);
+scenes.push([23.3, 26, () => `
+  ${interior()}
+  ${nightView("w5", 60, 300, 960, 460)}
+  ${seatRow(140, 1260, 800, 600)}
+  <g id="je5b">${actor("je", "jb", 240, 640, 600, 1050)}</g>
+  ${seatRow(100, 1460, 880, 460)}`,
+  (t, T) => {
+    mouth("jb", "je", T);
+    const land = backOut(t / 0.35);
+    $("je5b").setAttribute("transform", `translate(0 ${(1 - land) * -500})`);
+  }]);
+
+// 6 (26–30): PALPITE — the Corredor grabs the door, freeze frame.
+scenes.push([26, 30, () => `<g id="frzG">` + doorView(`<g id="cor6">${corredor(300, 700, 520, 910)}</g>`, "d6") + `</g>
+  <rect id="frz" width="${W}" height="${H}" fill="#0b1022" opacity="0"/>
+  <g id="pq" opacity="0">
+    ${tag("PALPITE", W / 2, 360, "#e8453c", "#fff", 60)}
+    <rect x="60" y="520" width="960" height="250" rx="30" fill="#fff" stroke="${INK}" stroke-width="8"/>
+    <text x="540" y="620" ${FONT} font-size="58" fill="${INK}" text-anchor="middle">O que o Seu Valdir</text><text x="540" y="700" ${FONT} font-size="58" fill="${INK}" text-anchor="middle">vai fazer?</text>
+    <g ${O} stroke-width="8"><rect x="60" y="830" width="960" height="170" rx="30" fill="#f2c230"/><rect x="60" y="1040" width="960" height="170" rx="30" fill="#e8453c"/></g>
+    <text x="110" y="940" ${FONT} font-size="64" fill="${INK}">A) Acelerar</text><text x="110" y="1150" ${FONT} font-size="64" fill="#fff">B) Usar o extintor</text>
+    <circle cx="540" cy="1430" r="120" fill="#fff" stroke="${INK}" stroke-width="10"/><path id="clk" fill="#1b1b22" d=""/>
+    <text id="cnum" x="540" y="1470" ${FONT} font-size="110" fill="#e8453c" text-anchor="middle" stroke="#fff" stroke-width="10" paint-order="stroke">3</text>
+  </g>`,
+  (t) => {
+    const grab = easeOut(t / 0.4);
+    $("cor6").setAttribute("transform", `translate(0 ${(1 - grab) * 300}) rotate(${Math.sin(t * 30) * (t < 0.6 ? 2 : 0)} 560 1150)`);
+    const f = t > 0.6;
+    $("frz").setAttribute("opacity", f ? 0.55 : 0);
+    $("frzG").style.filter = f ? "grayscale(.8)" : "";
+    $("pq").setAttribute("opacity", f ? 1 : 0);
+    const left = clamp((t - 0.8) / 3.0);
+    const a = left * Math.PI * 2, r = 100;
+    $("clk").setAttribute("d", left > 0 ? `M540 1430 L540 ${1430 - r} A${r} ${r} 0 ${a > Math.PI ? 1 : 0} 1 ${540 + r * Math.sin(a)} ${1430 - r * Math.cos(a)} Z` : "");
+    $("cnum").textContent = String(Math.max(1, 3 - Math.floor((t - 0.8))));
+  }]);
+
+// 7 (30–36): the answer is C — Valdir asks for the fare; then the extinguisher.
+scenes.push([30, 36, () => doorView(`<g id="cor7">${corredor(330, 700, 520, 910)}<g id="qm" ${FONT} font-size="120" fill="#ffd34d" stroke="${INK}" stroke-width="10" paint-order="stroke"><text x="470" y="690">?</text><text x="620" y="650">?</text></g></g>${puffs("pf7")}`, "d7") + `
+  ${actor("valdir", "v7", -160, 900, 640, 1120)}
+  <g transform="translate(470 1560) rotate(-62)"><g id="ext7">${nestArt(itemBy("Extintor").art(""), -120, -110, 240, 220)}</g></g>
+  <g id="ans" opacity="0">${tag("RESPOSTA: C) COBRAR A PASSAGEM", W / 2, 260, "#2f5fb3", "#fff", 40)}</g>
+  <g id="card" opacity="0">
+    <rect x="600" y="330" width="420" height="200" rx="24" fill="#fff" stroke="${INK}" stroke-width="8"/>
+    <text x="810" y="410" ${FONT} font-size="46" fill="${INK}" text-anchor="middle">EXTINTOR</text>
+    <text x="680" y="490" ${FONT} font-size="54" fill="${INK}">1</text><text x="790" y="490" ${FONT} font-size="54" fill="${INK}">2</text><text x="900" y="490" ${FONT} font-size="54" fill="${INK}">3</text>
+    <path d="M664 490 L716 440" stroke="#e8453c" stroke-width="10" stroke-linecap="round"/></g>`,
+  (t, T) => {
+    $("stage").style.filter = "";
+    openDoor("d7", easeInOut(t / 0.35));
+    mouth("v7", "valdir", T);
+    $("ans").setAttribute("opacity", t > 0.9 && t < 3.6 ? 1 : 0);
+    $("qm").setAttribute("opacity", t > 1.1 && t < 2.4 ? 1 : 0);
+    const fall = clamp((t - 2.3) / 0.5);
+    $("cor7").setAttribute("transform", `translate(${fall * 120} ${fall * 700}) rotate(${fall * 40} 590 1610)`);
+    if (t > 2.8) drawPuffs("pf7", t - 2.8, 420, 1240, 520); else $("pf7").innerHTML = "";
+    $("ext7").setAttribute("transform", `translate(${t > 2.8 && t < 3.6 ? Math.sin(t * 70) * 6 : 0} 0)`);
+    $("card").setAttribute("opacity", clamp((t - 3.5) / 0.2));
+  }]);
+
+// 8 (36–42): silence, the camera pans the passengers and finds the Passenger in the back.
+const panCast = [["Jé", 0], ["Professor Otávio", 1], ["Dona Cida", 2], ["Rex", 3], ["Kauã", 4]];
+scenes.push([36, 42, () => `
+  ${interior()}
+  <g id="pan">
+    ${Array.from({ length: 5 }, (_, i) => nightView("p8w" + i, 40 + i * 620, 300, 560, 420)).join("")}
+    ${panCast.map(([n, i]) => nestArt(charBy(n).art(""), 40 + i * 620, n === "Rex" ? 1000 : 760, 560, n === "Rex" ? 560 : 980)).join("")}
+    <g id="pasG">${nestArt(charBy("O Passageiro do Fundo").art(""), 40 + 5 * 620, 740, 580, 1015)}
+      <ellipse cx="${40 + 5 * 620 + 260}" cy="986" rx="10" ry="7" fill="#e9f0ff"/><ellipse cx="${40 + 5 * 620 + 318}" cy="986" rx="10" ry="7" fill="#e9f0ff"/></g>
+    ${Array.from({ length: 6 }, (_, i) => seatRow(20 + i * 620, 1440, 600, 480)).join("")}
+  </g>
+  <rect id="dim8" width="${W}" height="${H}" fill="#000" opacity="0"/>`,
+  (t) => {
+    const p = easeInOut(t / 4.0);
+    const x = -p * (5 * 620 - 250);
+    const z = easeInOut((t - 4.2) / 1.2);
+    const cx = 40 + 5 * 620 + 290 + x;
+    $("pan").setAttribute("transform", `translate(${cx} 1100) scale(${1 + z * 0.55}) translate(${-cx} -1100) translate(${x} 0)`);
+    $("dim8").setAttribute("opacity", 0.15 + z * 0.3);
+  }]);
+
+// 9 (42–51): the diesel light; the post has a socket; "TOMADA?!" and every Lerdo turns.
+scenes.push([42, 45.9, () => `
+  <rect width="${W}" height="${H}" fill="#171b24"/>
+  <rect x="80" y="420" width="920" height="1000" rx="60" fill="#22262f" stroke="${INK}" stroke-width="10"/>
+  <path d="M240 1060 A300 300 0 0 1 840 1060" fill="none" stroke="#e9f0ff" stroke-width="16"/>
+  ${[0, 1, 2, 3, 4].map((i) => { const a = Math.PI + i * Math.PI / 4; return `<path d="M${540 + 270 * Math.cos(a)} ${1060 + 270 * Math.sin(a)} L${540 + 310 * Math.cos(a)} ${1060 + 310 * Math.sin(a)}" stroke="#e9f0ff" stroke-width="12"/>`; }).join("")}
+  <text x="250" y="1140" ${FONT} font-size="64" fill="#e8453c">R</text><text x="790" y="1140" ${FONT} font-size="64" fill="#7fe0a8">C</text>
+  <g id="needle"><path d="M540 1060 L300 1000" stroke="#e8453c" stroke-width="16" stroke-linecap="round"/></g><circle cx="540" cy="1060" r="30" fill="#e9f0ff" stroke="${INK}" stroke-width="6"/>
+  <g id="lamp9"><circle cx="540" cy="1260" r="70" fill="#e8453c" stroke="${INK}" stroke-width="8"/>
+    <g fill="#fff"><rect x="510" y="1220" width="44" height="70" rx="6"/><rect x="556" y="1236" width="16" height="40" rx="6"/></g></g>
+  ${tag("DIESEL: 1 PARADA", W / 2, 620, "#e8453c", "#fff", 52)}`,
+  (t) => {
+    $("lamp9").setAttribute("opacity", Math.floor(t * 4) % 2 ? 0.35 : 1);
+    $("needle").setAttribute("transform", `rotate(${Math.sin(t * 9) * 2} 540 1060)`);
+  }]);
+scenes.push([45.9, 51, () => `
+  ${interior()}
+  ${nightView("w9", 60, 280, 960, 600, `<g id="heads">${[0, 1, 2, 3].map((i) => `<g id="hd${i}">${nestArt(charBy("Lerdo comum").art(""), 80 + i * 230, 480, 260, 455)}</g>`).join("")}</g>`)}
+  ${seatRow(-40, 1320, 560, 600)}${seatRow(560, 1320, 560, 600)}
+  ${actor("je", "j9", -60, 820, 560, 980)}
+  <g id="k9">${actor("kaua", "kk", 470, 760, 640, 1120)}</g>
+  <g id="bat" opacity="0"><rect x="700" y="420" width="250" height="110" rx="18" fill="#1b1b22" stroke="#fff" stroke-width="6"/><rect x="950" y="455" width="16" height="40" fill="#fff"/>
+    <rect x="716" y="436" width="30" height="78" fill="#e8453c"/><text x="850" y="500" ${FONT} font-size="52" fill="#e8453c" text-anchor="middle">3%</text></g>`,
+  (t, T) => {
+    mouth("j9", "je", T); mouth("kk", "kaua", T);
+    const yell = T >= 48.2 && T < 48.8;
+    $("k9").setAttribute("transform", `translate(${yell ? Math.sin(t * 60) * 8 : 0} ${yell ? -30 : 0})`);
+    $("bat").setAttribute("opacity", T > 47.6 ? 1 : 0);
+    const turn = easeOut((T - 48.6) / 0.4);
+    for (let i = 0; i < 4; i++) $("hd" + i).setAttribute("transform", `translate(${turn * 40} ${-turn * 30}) rotate(${turn * (14 + i * 3)} ${210 + i * 230} 700)`);
+  }]);
+
+// 10 (51–60): the vote. Kauã whispers to the camera.
+scenes.push([51, 60, () => `
+  ${interior()}
+  ${nightView("w10", 60, 280, 960, 520)}
+  ${seatRow(-60, 1380, 1200, 540)}
+  <g id="k10">${actor("kaua", "kz", 160, 520, 760, 1330)}</g>
+  <g id="rex10">${nestArt(charBy("Rex").art(""), 760, 1340, 300, 525)}</g>
+  <g id="vote" opacity="0">
+    ${tag("VOTAÇÃO", W / 2, 360, "#e8453c", "#fff", 60)}
+    <g ${O} stroke-width="8"><rect x="50" y="460" width="470" height="300" rx="30" fill="#f2c230"/><rect x="560" y="460" width="470" height="300" rx="30" fill="#e8453c"/></g>
+    <text x="285" y="590" ${FONT} font-size="110" fill="${INK}" text-anchor="middle">A</text><text x="285" y="690" ${FONT} font-size="40" fill="${INK}" text-anchor="middle">Posto de</text><text x="285" y="738" ${FONT} font-size="40" fill="${INK}" text-anchor="middle">gasolina</text>
+    <text x="795" y="590" ${FONT} font-size="110" fill="#fff" text-anchor="middle">B</text><text x="795" y="700" ${FONT} font-size="44" fill="#fff" text-anchor="middle">Terminal</text>
+  </g>
+  <g id="cta" opacity="0">${caption(["Comenta A ou B.", "O mais votado vira", "o episódio 2."], 1560, 62, "#ffd34d")}</g>`,
+  (t, T) => {
+    mouth("kz", "kaua", T);
+    $("k10").setAttribute("transform", `translate(0 ${Math.sin(t * 2) * 6})`);
+    $("rex10").setAttribute("transform", `translate(0 ${talking("rex", T) ? -24 : 0})`);
+    const v = backOut((t - 1.5) / 0.4);
+    $("vote").setAttribute("opacity", clamp((t - 1.5) / 0.2));
+    $("vote").setAttribute("transform", `translate(540 600) scale(${0.8 + 0.2 * v}) translate(-540 -600)`);
+    $("cta").setAttribute("opacity", clamp((t - 4.4) / 0.3));
+  }]);
+
+// --- subtitles overlay ------------------------------------------------------
+function wrap(text, max = 22) {
+  const out = []; let line = "";
+  for (const w of text.split(" ")) { if ((line + " " + w).trim().length > max && line) { out.push(line); line = w; } else line = (line + " " + w).trim(); }
+  if (line) out.push(line); return out;
+}
+let lastSub = null;
+function subtitles(T) {
+  const s = SPEECH.find((s) => T >= s.t0 - 0.05 && T < s.t1 + 0.35);
+  const key = s ? s.t0 : null;
+  if (key === lastSub) return; lastSub = key;
+  if (!s) { $("sub").innerHTML = ""; return; }
+  const lines = wrap(s.text.toUpperCase());
+  const y0 = 1640 - (lines.length - 1) * 40;
+  $("sub").innerHTML = `<text x="540" y="${y0 - 90}" ${FONT} font-size="42" fill="#ffd34d" text-anchor="middle" stroke="${INK}" stroke-width="10" paint-order="stroke" letter-spacing="4">${s.label}</text>` +
+    lines.map((l, i) => `<text x="540" y="${y0 + i * 80}" ${FONT} font-size="66" fill="#fff" text-anchor="middle" stroke="${INK}" stroke-width="15" paint-order="stroke">${l}</text>`).join("");
+}
+
+let current = -1;
+window.setFrame = (T) => {
+  const i = scenes.findIndex(([a, b]) => T >= a && T < b);
+  const idx = i < 0 ? scenes.length - 1 : i;
+  const [a, , build, update] = scenes[idx];
+  if (idx !== current) {
+    $("stage").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${build()}</svg>`;
+    $("stage").style.filter = "";
+    current = idx;
+  }
+  update(T - a, T);
+  subtitles(T);
+  $("tagT").style.display = T < 3 ? "none" : "";
+};
+setFrame(0);
+
+window.checkMouths = () => Object.entries(MOUTH).map(([w,[n,c]]) => [w, charBy(n).art("").includes(c)]);
+</script></body></html>
