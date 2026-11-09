@@ -395,5 +395,23 @@ const thumb = `<svg viewBox="0 0 1080 1920" width="1080" height="1920" xmlns="ht
     <text x="540" y="1870" font-size="56" fill="#ffffff" stroke="#1b1b22" stroke-width="12" paint-order="stroke">Você decide o que acontece</text>
   </g>
 </svg>`;
-document.getElementById("out").innerHTML = location.hash === "#capa" ? capa : location.hash === "#thumb" ? thumb : logo;
+const tiktok = `<svg viewBox="0 0 1080 1440" width="1080" height="1440" xmlns="http://www.w3.org/2000/svg">
+  <defs>${led("ledK")}
+    <linearGradient id="skyK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060a1c"/><stop offset=".72" stop-color="#2c3a68"/><stop offset="1" stop-color="#151a26"/></linearGradient>
+    <filter id="glowK" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1080" height="1440" fill="url(#skyK)"/>
+  <circle cx="900" cy="470" r="60" fill="#fff6d6"/>
+  ${[90, 330, 780, 1010].map((x, i) => araucaria(x, 1000, 330 + (i % 2) * 100, "#0d1530")).join("")}
+  <rect x="0" y="1000" width="1080" height="440" fill="#1a1f2c"/>
+  <rect x="90" y="70" width="900" height="300" rx="30" fill="#141414" stroke="#3a3a44" stroke-width="10"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-weight="bold" text-anchor="middle" filter="url(#glowK)"><g mask="url(#ledKm)">
+    <text x="540" y="205" font-size="124" fill="#ffe25a" letter-spacing="6">LINHA</text><text x="540" y="330" font-size="124" fill="#ffe25a" letter-spacing="6">FINAL</text></g></g>
+  <g font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" text-anchor="middle">
+    <rect x="350" y="420" width="380" height="104" rx="24" fill="#d8322f" stroke="#1b1b22" stroke-width="8" transform="rotate(-4 540 472)"/>
+    <text x="540" y="497" font-size="70" fill="#ffffff" letter-spacing="6" transform="rotate(-4 540 472)">TRAILER</text></g>
+  ${nestArt(items.find((c) => c.name === "A Lata").art(""), 20, 620, 1040, 443)}
+  ${cast.map((n, i) => nestArt(charBy(n).art(""), 0 + i * 154, 1000, 172, 301)).join("")}
+  <text x="540" y="1395" font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" font-size="50" fill="#ffffff" text-anchor="middle" stroke="#1b1b22" stroke-width="12" paint-order="stroke">Você decide o que acontece</text>
+</svg>`;
+document.getElementById("out").innerHTML = location.hash === "#tiktok" ? tiktok : location.hash === "#capa" ? capa : location.hash === "#thumb" ? thumb : logo;
 </script></body></html>
