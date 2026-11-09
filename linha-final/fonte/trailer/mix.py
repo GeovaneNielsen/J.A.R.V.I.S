@@ -51,13 +51,13 @@ def music(t0,t1,bpm,g):
 music(6.0,15.0,120,0.16)
 music(18.0,21.0,150,0.2)
 # voices and cues on cards
-put(load('p_valdir.wav'),6.15,1.0)
+put(load('p_valdir.wav'),6.1,1.0)
 ding=tone(1318.5,0.18,0.002,0.1)+np.concatenate([np.zeros(int(0.12*SR)),tone(1760,0.3,0.002,0.15)])[:int(0.18*SR)] if False else None
-put(tone(1318.5,0.25,0.002,0.12)*0.35,7.75); put(tone(1760,0.35,0.002,0.18)*0.35,7.88)
-put(load('p_otavio.wav'),8.95,1.0)
-put(noise(0.08)*env(int(0.08*SR),0.001,0.02)*0.35,11.35); put(tone(330,0.15,0.001,0.05)*0.3,11.36)
-put(load('p_kaua1h.wav'),12.5,1.0)
-put(load('p_rexh.wav'),14.2,1.0)
+put(load('p_je.wav'),7.6,1.0)
+put(load('p_otavio.wav'),9.2,1.0)
+put(load('p_cida.wav'),11.03,1.0)
+put(load('p_kaua1h.wav'),12.45,1.0)
+put(load('p_rexh.wav'),14.05,1.0)
 # E: lamp buzz, flicker clicks, sting
 n=int(3*SR); t=np.arange(n)/SR
 buzz=np.sign(np.sin(2*np.pi*120*t))*0.02; put(fade(buzz,0.05,0.3),15.0)
