@@ -300,6 +300,11 @@ function sheet(title, sub, cls, list) {
   }).join("")}</div>`;
 }
 const mode = location.hash.slice(1) || "personagens";
+if (mode === "silhueta") {
+  document.getElementById("sheet").innerHTML = `<h1>LINHA FINAL<small>Teste de silhueta</small></h1><p class="sub">Os personagens só em preto, do jeito que aparecem pequenos na tela do celular.</p>
+  <div style="display:flex;gap:28px;align-items:flex-end;background:#fff;border:3px solid #1b1b22;border-radius:16px;padding:24px">${chars.map((c) => `<div style="width:130px;display:grid;gap:8px;justify-items:center"><div style="width:130px;filter:brightness(0)">${c.art("")}</div><div style="font-size:14px;text-align:center">${c.name}</div></div>`).join("")}</div>`;
+  throw "done";
+}
 document.getElementById("sheet").innerHTML = mode === "arsenal"
   ? sheet("Acessórios e arsenal", "Tudo improvisado com o que se acha num ônibus e numa cidade.", "items", items)
   : sheet("Personagens", "Estudo de estilo: 2D chapado com sombra lateral, contorno grosso e uma cor-assinatura por personagem.", "chars", chars);
