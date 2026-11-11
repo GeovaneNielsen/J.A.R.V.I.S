@@ -1,0 +1,122 @@
+[
+{
+"file": "kaua_a",
+"who": "kaua",
+"t0": 0.4,
+"t1": 2.52,
+"label": "KAUÃ",
+"text": "Vocês escolheram o posto. Obrigado... eu acho."
+},
+{
+"file": "valdir_a",
+"who": "valdir",
+"t0": 3.5,
+"t1": 5.54,
+"label": "SEU VALDIR",
+"text": "Motor desligado. Ninguém respira alto."
+},
+{
+"file": "otavio_a",
+"who": "otavio",
+"t0": 5.9,
+"t1": 7.79,
+"label": "PROFESSOR OTÁVIO",
+"text": "Eles reagem a qualquer som acima de um sussurro."
+},
+{
+"file": "je_a",
+"who": "je",
+"t0": 8.0,
+"t1": 9.53,
+"label": "JÉ",
+"text": "Então fala menos, professor."
+},
+{
+"file": "je_b",
+"who": "je",
+"t0": 12.6,
+"t1": 13.77,
+"label": "JÉ",
+"text": "Bip de novo não..."
+},
+{
+"file": "kaua_b",
+"who": "kaua",
+"t0": 17.4,
+"t1": 18.53,
+"label": "KAUÃ",
+"text": "4%... 5%..."
+},
+{
+"file": "je_c",
+"who": "je",
+"t0": 27.4,
+"t1": 28.41,
+"label": "JÉ",
+"text": "Isso... funcionou?"
+},
+{
+"file": "otavio_b",
+"who": "otavio",
+"t0": 29.0,
+"t1": 32.55,
+"label": "PROFESSOR OTÁVIO",
+"text": "Tecnicamente, ritmo lento acalma o sistema nervoso. Ou o que sobrou dele."
+},
+{
+"file": "cida_a",
+"who": "cida",
+"t0": 36.0,
+"t1": 38.17,
+"label": "DONA CIDA",
+"text": "MOÇO! TEM TROCO PRA CINQUENTA?"
+},
+{
+"file": "cida_b",
+"who": "cida",
+"t0": 42.0,
+"t1": 43.49,
+"label": "DONA CIDA",
+"text": "Licença, licença!"
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 43.8,
+"t1": 44.09,
+"label": "REX",
+"text": "Au! Au!"
+},
+{
+"file": "valdir_b",
+"who": "valdir",
+"t0": 45.0,
+"t1": 45.99,
+"label": "SEU VALDIR",
+"text": "Todo mundo pra dentro!"
+},
+{
+"file": "kaua_c",
+"who": "kaua",
+"t0": 49.6,
+"t1": 50.79,
+"label": "KAUÃ",
+"text": "Gente... cadê o cara do fundo?"
+},
+{
+"file": "kaua_d",
+"who": "kaua",
+"t0": 54.0,
+"t1": 55.92,
+"label": "KAUÃ",
+"text": "Vocês decidem. E decide rápido."
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 56.6,
+"t1": 56.89,
+"label": "REX",
+"text": "Au! Au!"
+}
+]
