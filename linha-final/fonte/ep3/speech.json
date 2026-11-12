@@ -1,0 +1,130 @@
+[
+{
+"file": "kaua_a",
+"who": "kaua",
+"t0": 0.4,
+"t1": 2.72,
+"label": "KAUÃ",
+"text": "Vocês escolheram o terminal... e o terminal escolheu a gente."
+},
+{
+"file": "valdir_a",
+"who": "valdir",
+"t0": 3.4,
+"t1": 6.35,
+"label": "SEU VALDIR",
+"text": "Trinta anos de linha e nunca vi o terminal tão vazio."
+},
+{
+"file": "otavio_a",
+"who": "otavio",
+"t0": 6.6,
+"t1": 8.93,
+"label": "PROFESSOR OTÁVIO",
+"text": "Tecnicamente, vazio é a melhor notícia da noite."
+},
+{
+"file": "cobrador",
+"who": "cobrador",
+"t0": 9.5,
+"t1": 11.01,
+"label": "O COBRADOR",
+"text": "Paaas... saaa... geeem."
+},
+{
+"file": "je_a",
+"who": "je",
+"t0": 11.4,
+"t1": 12.81,
+"label": "JÉ",
+"text": "Ele ainda tá trabalhando?"
+},
+{
+"file": "valdir_b",
+"who": "valdir",
+"t0": 13.3,
+"t1": 13.74,
+"label": "SEU VALDIR",
+"text": "Colega."
+},
+{
+"file": "kaua_b",
+"who": "kaua",
+"t0": 15.6,
+"t1": 16.41,
+"label": "KAUÃ",
+"text": "Eu tenho... 5%."
+},
+{
+"file": "cida_a",
+"who": "cida",
+"t0": 17.4,
+"t1": 20.16,
+"label": "DONA CIDA",
+"text": "Deixa que a passagem de todo mundo eu pago."
+},
+{
+"file": "cida_b",
+"who": "cida",
+"t0": 28.2,
+"t1": 30.29,
+"label": "DONA CIDA",
+"text": "Finalmente alguém com troco!"
+},
+{
+"file": "je_b",
+"who": "je",
+"t0": 30.6,
+"t1": 32.28,
+"label": "JÉ",
+"text": "Mais devagar que fila de banco."
+},
+{
+"file": "kaua_c",
+"who": "kaua",
+"t0": 37.8,
+"t1": 38.75,
+"label": "KAUÃ",
+"text": "Rex: passe livre."
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 39.4,
+"t1": 39.69,
+"label": "REX",
+"text": "Au! Au!"
+},
+{
+"file": "otavio_b",
+"who": "otavio",
+"t0": 42.6,
+"t1": 45.74,
+"label": "PROFESSOR OTÁVIO",
+"text": "Doutor Ivo Prates, Laboratório Municipal... Foi lá que tudo começou."
+},
+{
+"file": "kaua_d",
+"who": "kaua",
+"t0": 50.6,
+"t1": 51.36,
+"label": "KAUÃ",
+"text": "Vocês ouviram isso?"
+},
+{
+"file": "kaua_e",
+"who": "kaua",
+"t0": 54.0,
+"t1": 56.39,
+"label": "KAUÃ",
+"text": "Vocês decidem. Mas decide antes da luz voltar."
+},
+{
+"file": "rex",
+"who": "rex",
+"t0": 57.4,
+"t1": 57.69,
+"label": "REX",
+"text": "Au! Au!"
+}
+]

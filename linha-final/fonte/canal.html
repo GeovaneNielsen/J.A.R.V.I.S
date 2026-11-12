@@ -494,5 +494,48 @@ function epCover2(h) {
   </g>
 </svg>`;
 }
-document.getElementById("out").innerHTML = location.hash === "#ep2v" ? epCover2(1920) : location.hash === "#ep2k" ? epCover2(1440) : location.hash === "#ep1v" ? epCover(1920) : location.hash === "#ep1k" ? epCover(1440) : location.hash === "#tiktok" ? tiktok : location.hash === "#capa" ? capa : location.hash === "#thumb" ? thumb : logo;
+function epCover3(h) {
+  const tall = h > 1600;
+  const winY = tall ? 640 : 470, winH = tall ? 560 : 430, kY = tall ? 780 : 600, kH = tall ? 1200 : 820, abY = tall ? 1530 : 1180;
+  return `<svg viewBox="0 0 1080 ${h}" width="1080" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  <defs>${led("ledE")}
+    <linearGradient id="wallE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4a66"/><stop offset="1" stop-color="#151a26"/></linearGradient>
+    <linearGradient id="skyE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1430"/><stop offset="1" stop-color="#28345e"/></linearGradient>
+    <clipPath id="winE"><rect x="60" y="${winY}" width="960" height="${winH}" rx="34"/></clipPath>
+    <filter id="glowE" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1080" height="${h}" fill="url(#wallE)"/>
+  <rect x="140" y="${tall ? 330 : 250}" width="800" height="26" rx="13" fill="#f4fbff" stroke="#1b1b22" stroke-width="5" opacity=".8"/>
+  <g clip-path="url(#winE)">
+    <rect x="60" y="${winY}" width="960" height="${winH}" fill="url(#skyE)"/>
+    <circle cx="880" cy="${winY + 90}" r="50" fill="#fff6d6"/>
+    ${araucaria(160, winY + winH, winH * 0.7, "#0e1628")}${araucaria(950, winY + winH, winH * 0.6, "#0e1628")}
+    <rect x="60" y="${winY + winH * 0.55}" width="960" height="${winH}" fill="#2a3346"/>
+    <rect x="80" y="${winY + 30}" width="300" height="80" rx="12" fill="#e8453c"/><text x="230" y="${winY + 88}" font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" font-size="50" fill="#fff" text-anchor="middle">TERMINAL</text>
+    ${(() => { const x = 60, y = winY + 40, w = 400, h = 700; return nestArt(charBy("Lerdo comum").art(""), x, y, w, h) + `<g stroke="#1b1b22" stroke-width="6" stroke-linejoin="round">
+      <path d="M${x + 0.233 * w} ${y + 0.175 * h} Q${x + 0.5 * w} ${y + 0.04 * h} ${x + 0.767 * w} ${y + 0.175 * h} Z" fill="#2f5fb3"/><rect x="${x + 0.467 * w}" y="${y + 0.149 * h}" width="${0.367 * w}" height="${0.035 * h}" rx="8" fill="#244a8c"/>
+      <rect x="${x + 0.33 * w}" y="${y + 0.5 * h}" width="${0.32 * w}" height="${0.13 * h}" rx="10" fill="#6b3a1f"/></g>
+      <text x="${x + 0.49 * w}" y="${y + 0.59 * h}" font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" font-size="40" fill="#ffd34d" text-anchor="middle">R$</text>`; })()}
+    </g>
+  <rect x="60" y="${winY}" width="960" height="${winH}" rx="34" fill="none" stroke="#1b1b22" stroke-width="14"/>
+  
+  ${nestArt(kauaScared(), 380, kY, 700, kH)}
+  
+  
+  <rect x="90" y="${tall ? 60 : 40}" width="900" height="${tall ? 200 : 170}" rx="26" fill="#141414" stroke="#3a3a44" stroke-width="9"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-weight="bold" text-anchor="middle" filter="url(#glowE)"><g mask="url(#ledE3m)">
+    <text x="540" y="${tall ? 200 : 162}" font-size="${tall ? 118 : 104}" fill="#ffe25a" letter-spacing="6">LINHA FINAL</text></g></g>
+  <g font-family="DejaVu Sans, Arial, sans-serif" font-weight="bold" text-anchor="middle">
+    <g transform="rotate(-4 540 ${tall ? 450 : 345})">
+      <rect x="90" y="${tall ? 390 : 290}" width="900" height="116" rx="24" fill="#d8322f" stroke="#1b1b22" stroke-width="8"/>
+      <text x="540" y="${tall ? 470 : 370}" font-size="58" fill="#ffffff" letter-spacing="1">EP. 3 · A CATRACA</text></g>
+    <g stroke="#1b1b22" stroke-width="9">
+      <rect x="50" y="${abY}" width="470" height="${tall ? 240 : 200}" rx="30" fill="#f2c230"/>
+      <rect x="560" y="${abY}" width="470" height="${tall ? 240 : 200}" rx="30" fill="#e8453c"/></g>
+    <text x="285" y="${abY + 100}" font-size="92" fill="#1b1b22">A</text><text x="285" y="${abY + (tall ? 190 : 170)}" font-size="54" fill="#1b1b22">LABORATÓRIO</text>
+    <text x="795" y="${abY + 100}" font-size="92" fill="#ffffff">B</text><text x="795" y="${abY + (tall ? 190 : 170)}" font-size="54" fill="#ffffff">ABRIGO</text>
+    ${tall ? `<text x="540" y="1860" font-size="58" fill="#ffffff" stroke="#1b1b22" stroke-width="12" paint-order="stroke">Você decide o que acontece</text>` : ""}
+  </g>
+</svg>`;
+}
+document.getElementById("out").innerHTML = location.hash === "#ep3v" ? epCover3(1920) : location.hash === "#ep3k" ? epCover3(1440) : location.hash === "#ep2v" ? epCover2(1920) : location.hash === "#ep2k" ? epCover2(1440) : location.hash === "#ep1v" ? epCover(1920) : location.hash === "#ep1k" ? epCover(1440) : location.hash === "#tiktok" ? tiktok : location.hash === "#capa" ? capa : location.hash === "#thumb" ? thumb : logo;
 </script></body></html>
