@@ -49,5 +49,15 @@ window.setFrame = (T) => {
   // final beat: subscribe line
   const last = idx === SEQ.length - 1 ? `<text x="960" y="1010" ${ITAL} font-size="48" fill="${GRAYT}" text-anchor="middle" opacity="${fade(t, 1.4, 1.8)}">inscreva-se para o próximo mistério</text>` : "";
   $("stage").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${DEFS}${props}${cap}${tp}${last}</svg>`;
+  // living light: blinds sway and slide (wind), clouds dim the sun, camera breathes
+  const ph = (ch ? ch.b : 0) * 1.7;
+  const bx = 220 * Math.sin(T * 0.16 + ph) + 80 * Math.sin(T * 0.05), by = 60 * Math.sin(T * 0.09 + ph) + 20 * Math.sin(T * 1.6) * Math.max(0, Math.sin(T * 0.23));
+  const br = 4 * Math.sin(T * 0.07 + ph) + 0.6 * Math.sin(T * 0.9) * Math.max(0, Math.sin(T * 0.17 + 1));
+  const cloud = 0.5 + 0.5 * Math.sin(T * 0.13 + ph) * Math.sin(T * 0.051 + 0.7);
+  $("persiana").style.transform = `translate(${bx}px, ${by}px) rotate(${br}deg)`;
+  $("persiana").style.opacity = String(0.35 + 0.4 * cloud);
+  $("sun").style.opacity = String(0.25 + 0.6 * cloud);
+  const z = 1.03 + 0.015 * Math.sin(T * 0.045);
+  $("cam").style.transform = `translate(${9 * Math.sin(T * 0.09)}px, ${6 * Math.sin(T * 0.071 + 1)}px) scale(${z})`;
   const g = Math.floor(T * 15) % 3; for (let i = 0; i < 3; i++) $("ov" + i).style.display = i === g ? "block" : "none";
 };

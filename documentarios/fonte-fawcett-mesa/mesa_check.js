@@ -4,6 +4,7 @@ const { chromium } = require('playwright'); const D = process.env.D;
   if (process.env.PREP) { await p.goto('file://' + D + '/mesa_prep.html');
     await p.evaluate(() => mk('bg')); await p.screenshot({ path: D + '/mesa_bg.png' });
     for (let g = 0; g < 3; g++) { await p.evaluate((g) => mk('ov', g), g); await p.screenshot({ path: D + `/mesa_ov${g}.png`, omitBackground: true }); }
+    await p.setViewportSize({ width: 2600, height: 1800 }); await p.evaluate(() => mk('blinds')); await p.screenshot({ path: D + '/mesa_blinds.png', omitBackground: true });
     await b.close(); return; }
   await p.goto('file://' + D + '/mesa.html'); await p.waitForTimeout(400);
   const ts = process.env.TS.split(',').map(Number);

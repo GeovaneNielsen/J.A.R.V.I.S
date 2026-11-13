@@ -9,7 +9,7 @@ def grab(start,endmark):
 ext = grab('const BR =','function brazil(') + grab('function fawcett(','const jungleBg')
 ext = ext.replace('fill = INKD','fill = "#1b1b22"')
 TL=json.load(open('timeline.json'))
-html=f'''<!doctype html><html><head><meta charset="utf-8"><style>body{{margin:0;background:#000}}#wrap{{position:relative;width:1920px;height:1080px;overflow:hidden}}#wrap>*{{position:absolute;inset:0}}</style></head><body><div id="wrap"><img id="bg" src="mesa_bg.png"><div id="stage"></div><img id="ov0" src="mesa_ov0.png"><img id="ov1" src="mesa_ov1.png" style="display:none"><img id="ov2" src="mesa_ov2.png" style="display:none"></div><script>
+html=f'''<!doctype html><html><head><meta charset="utf-8"><style>body{{margin:0;background:#000}}#wrap{{position:relative;width:1920px;height:1080px;overflow:hidden}}#wrap>*,#cam>*{{position:absolute;inset:0}}#persiana{{inset:auto;left:-340px;top:-360px;width:2600px;height:1800px;transform-origin:1300px 900px}}#sun{{background:radial-gradient(ellipse at 15% 0%,rgba(255,214,150,.55),rgba(255,214,150,0) 60%);mix-blend-mode:soft-light}}</style></head><body><div id="wrap"><div id="cam"><img id="bg" src="mesa_bg.png"><div id="stage"></div></div><img id="persiana" src="mesa_blinds.png"><div id="sun"></div><img id="ov0" src="mesa_ov0.png"><img id="ov1" src="mesa_ov1.png" style="display:none"><img id="ov2" src="mesa_ov2.png" style="display:none"></div><script>
 {js}
 {open('mesa.js').read()}
 {ext}
@@ -26,7 +26,8 @@ prep=f'''<!doctype html><html><head><meta charset="utf-8"><style>body{{margin:0;
 {ext}
 window.mk=(kind,g)=>{{ let s;
  if(kind==='bg') s=deskBase()+`<g filter="url(#soft)" opacity=".85">${{card(230,180,1.1,-14,520,360,lines(40,60,420,8,34,5))}}${{PROPS.magnifier().replace('<g filter="url(#shadow)">','<g transform="translate(1720 960) scale(.9) translate(-900 -600)">')}}${{card(1780,140,.9,12,360,260,'')}}</g>`;
- else s=DEFS.replace('seed="3"','seed="'+(3+g*11)+'"')+deskTop(0);
+ else if(kind==='blinds') {{ document.getElementById('stage').innerHTML=`<svg viewBox="-340 -360 2600 1800" width="2600" height="1800" xmlns="http://www.w3.org/2000/svg">${{DEFS}}${{deskTop('blinds')}}</svg>`; return; }}
+ else s=DEFS.replace('seed="3"','seed="'+(3+g*11)+'"')+deskTop('ov');
  document.getElementById('stage').innerHTML=`<svg viewBox="0 0 1920 1080" width="1920" height="1080" xmlns="http://www.w3.org/2000/svg">${{s}}</svg>`; }};
 </script></body></html>'''
 open('mesa_prep.html','w').write(prep)

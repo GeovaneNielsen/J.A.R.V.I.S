@@ -27,11 +27,10 @@ const DEFS = `<defs>
 function deskBase() {
   return `${DEFS}<rect width="${W}" height="${H}" fill="url(#grid)"/><rect width="${W}" height="${H}" fill="url(#grid5)"/>`;
 }
-function deskTop(t) {
-  // window-blind shadows drifting very slowly, vignette and grain
-  const off = Math.sin(t * 0.05) * 40;
-  return `<g filter="url(#blinds)" opacity=".62" transform="translate(${off} 0)">${Array.from({ length: 7 }, (_, i) => `<rect x="${-700 + i * 520}" y="-400" width="230" height="2000" fill="#000" transform="rotate(38 ${-700 + i * 520} 0)"/>`).join("")}</g>
-    <rect width="${W}" height="${H}" fill="url(#vig)"/><rect width="${W}" height="${H}" filter="url(#grain)" opacity=".9"/>`;
+function deskTop(part) {
+  // separate layers so the page can move them every frame
+  if (part === "blinds") return `<g filter="url(#blinds)">${Array.from({ length: 11 }, (_, i) => `<rect x="${-1400 + i * 520}" y="-600" width="230" height="3400" fill="#000" transform="rotate(38 ${-1400 + i * 520} 0)"/>`).join("")}</g>`;
+  return `<rect width="${W}" height="${H}" fill="url(#vig)"/><rect width="${W}" height="${H}" filter="url(#grain)" opacity=".9"/>`;
 }
 
 // ---------- paper props -------------------------------------------------------
@@ -90,7 +89,11 @@ const PROPS = {
   letter: (k) => card(960, 640, 1, -4, 680, 460, `${scrawl(60, 90, 560, 9, 36, 4)}<text x="600" y="60" ${ITAL} font-size="28" fill="#3a2a20" text-anchor="end">29 de maio de 1925</text>`),
   compass: () => `<g filter="url(#shadow)"><circle cx="960" cy="650" r="190" fill="#c9a24a" stroke="${INKD}" stroke-width="8"/><circle cx="960" cy="650" r="150" fill="#f2efe6" stroke="${INKD}" stroke-width="4"/><path d="M960 520 L990 650 L960 780 L930 650 Z" fill="${REDB}" stroke="${INKD}" stroke-width="4"/><text x="960" y="545" ${SERIF} font-size="34" text-anchor="middle">N</text></g>`,
   books: () => `<g filter="url(#shadow)">${["#5a3a2a", "#2f4a6a", "#6a2a2a", "#3a5a3a"].map((c, i) => `<rect x="${760 + i * 4}" y="${520 + i * 70}" width="${400 - i * 12}" height="66" rx="6" fill="${c}" stroke="${INKD}" stroke-width="5"/><rect x="${790 + i * 4}" y="${545 + i * 70}" width="${180}" height="10" fill="${MUSTARD}"/>`).join("")}</g>`,
-  gifts: () => `<g filter="url(#shadow)">${[0, 1, 2].map((i) => `<g transform="translate(${700 + i * 260} 640)"><path d="M-90 0 L90 0 L70 150 L-70 150 Z" fill="${["#b8862a", "#8a5a2a", "#a07a3a"][i]}" stroke="${INKD}" stroke-width="6"/><path d="M-90 0 Q0 -70 90 0" fill="none" stroke="${INKD}" stroke-width="7"/>${[0, 1, 2, 3].map((k) => `<path d="M-80 ${30 + k * 30} L80 ${30 + k * 30}" stroke="${INKD}" stroke-width="3" opacity=".5"/>`).join("")}</g>`).join("")}</g>`,
+  gifts: () => `<g filter="url(#shadow)">
+    <g transform="translate(560 560) rotate(-20)"><path d="M0 0 L230 -18 Q270 0 230 18 Z" fill="#d9dde3" stroke="${INKD}" stroke-width="6"/><rect x="-140" y="-24" width="150" height="48" rx="14" fill="#6a4a2a" stroke="${INKD}" stroke-width="6"/><circle cx="-110" cy="0" r="6" fill="${MUSTARD}"/><circle cx="-30" cy="0" r="6" fill="${MUSTARD}"/></g>
+    <g>${Array.from({ length: 19 }, (_, i) => { const a = Math.PI * (0.1 + 0.8 * i / 18); return `<circle cx="${960 + 170 * Math.cos(a)}" cy="${560 + 190 * Math.sin(a)}" r="17" fill="${["#c0261f", "#f2efe6", "#2f6fb0", "#d9a520"][i % 4]}" stroke="${INKD}" stroke-width="4"/>`; }).join("")}</g>
+    <g transform="translate(1360 600) rotate(18)"><rect x="-22" y="70" width="44" height="200" rx="16" fill="#8a5a2a" stroke="${INKD}" stroke-width="6"/><circle r="110" fill="#b8862a" stroke="${INKD}" stroke-width="7"/><circle r="84" fill="#cfe3ef" stroke="${INKD}" stroke-width="4"/><path d="M-50 -40 L-10 -70 M-40 -10 L20 -55" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".8"/></g>
+    <text x="960" y="900" font-family="DejaVu Sans Mono, monospace" font-size="34" fill="${GRAYT}" text-anchor="middle">facas · miçangas · espelhos</text></g>`,
   statuette: () => `<g filter="url(#shadow)"><path d="M960 400 Q1050 400 1050 510 Q1050 590 1005 620 L1050 900 L870 900 L915 620 Q870 590 870 510 Q870 400 960 400 Z" fill="#3e8a62" stroke="${INKD}" stroke-width="8"/><path d="M925 700 L995 700 M925 745 L995 745" stroke="${INKD}" stroke-width="5"/></g>`,
   manuscript: () => card(960, 640, 1, 3, 620, 560, `${scrawl(60, 120, 500, 11, 36, 9)}<text x="310" y="72" ${SERIF} font-size="34" fill="#3a2a20" text-anchor="middle">Manuscrito 512</text>`, "#dcc89a"),
   arches: () => card(960, 640, 1, -3, 700, 460, `<g stroke="#3a2a20" stroke-width="6" fill="none">${[0, 1, 2].map((i) => `<path d="M${90 + i * 180} 400 L${90 + i * 180} 220 Q${170 + i * 180} 120 ${250 + i * 180} 220 L${250 + i * 180} 400"/>`).join("")}<path d="M60 400 L640 400"/></g><text x="350" y="80" ${ITAL} font-size="34" fill="#3a2a20" text-anchor="middle">esboço · arcos, estátua, templo</text>`),
