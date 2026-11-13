@@ -1,0 +1,794 @@
+{
+"frases": [
+{
+"b": 0,
+"s": 0,
+"text": "Vinte e nove de maio de 1925.",
+"i": 0,
+"t0": 0.8,
+"t1": 3.56
+},
+{
+"b": 0,
+"s": 1,
+"text": "No meio do Mato Grosso, um inglês de 57 anos escreve uma carta para a esposa.",
+"i": 1,
+"t0": 4.16,
+"t1": 9.02
+},
+{
+"b": 0,
+"s": 2,
+"text": "Ele está com o filho e um amigo, prestes a entrar numa região que nenhum mapa europeu mostrava.",
+"i": 2,
+"t0": 9.62,
+"t1": 14.5
+},
+{
+"b": 0,
+"s": 3,
+"text": "A última frase é uma promessa: Você não precisa temer nenhum fracasso.",
+"i": 3,
+"t0": 15.1,
+"t1": 18.66
+},
+{
+"b": 0,
+"s": 4,
+"text": "Depois dessa carta, ninguém nunca mais teve notícia dos três.",
+"i": 4,
+"t0": 19.26,
+"t1": 22.62
+},
+{
+"b": 0,
+"s": 5,
+"text": "Ele procurava uma cidade perdida que chamava apenas de Z.",
+"i": 5,
+"t0": 23.22,
+"t1": 26.17
+},
+{
+"b": 0,
+"s": 6,
+"text": "Esta é a história do Coronel Percy Fawcett.",
+"i": 6,
+"t0": 26.77,
+"t1": 29.0
+},
+{
+"b": 0,
+"s": 7,
+"text": "E no final, quem decide o que aconteceu com ele é você.",
+"i": 7,
+"t0": 29.6,
+"t1": 32.41
+},
+{
+"b": 1,
+"s": 0,
+"text": "Percy Harrison Fawcett nasceu em 1867, em Torquay, no sul da Inglaterra.",
+"i": 8,
+"t0": 39.31,
+"t1": 44.43
+},
+{
+"b": 1,
+"s": 1,
+"text": "Virou oficial da Artilharia Real aos 18 anos e serviu no Ceilão, onde conheceu Nina, a mulher com quem teria três filhos.",
+"i": 9,
+"t0": 45.03,
+"t1": 52.42
+},
+{
+"b": 1,
+"s": 2,
+"text": "Mas o que o movia não era o exército: eram os mapas.",
+"i": 10,
+"t0": 53.02,
+"t1": 55.8
+},
+{
+"b": 1,
+"s": 3,
+"text": "Em 1901, ele entrou para a Royal Geographical Society, em Londres, para aprender a medir e desenhar o mundo.",
+"i": 11,
+"t0": 56.4,
+"t1": 63.1
+},
+{
+"b": 1,
+"s": 4,
+"text": "Também trabalhou para o serviço secreto britânico no Norte da África e ficou amigo de escritores como Henry Rider Haggard e Arthur Conan Doyle.",
+"i": 12,
+"t0": 63.7,
+"t1": 71.34
+},
+{
+"b": 1,
+"s": 5,
+"text": "Naquela época, ainda havia pedaços enormes do planeta em branco no papel.",
+"i": 13,
+"t0": 71.94,
+"t1": 75.8
+},
+{
+"b": 1,
+"s": 6,
+"text": "E o maior deles ficava na América do Sul.",
+"i": 14,
+"t0": 76.4,
+"t1": 78.59
+},
+{
+"b": 2,
+"s": 0,
+"text": "Em 1906, a sociedade mandou Fawcett mapear a fronteira entre o Brasil e a Bolívia.",
+"i": 15,
+"t0": 80.99,
+"t1": 86.22
+},
+{
+"b": 2,
+"s": 1,
+"text": "Era para ser um trabalho técnico.",
+"i": 16,
+"t0": 86.82,
+"t1": 88.37
+},
+{
+"b": 2,
+"s": 2,
+"text": "Virou uma obsessão.",
+"i": 17,
+"t0": 88.97,
+"t1": 89.81
+},
+{
+"b": 2,
+"s": 3,
+"text": "Entre 1906 e 1924, ele fez sete expedições, abrindo caminho por rios e matas onde poucos europeus tinham pisado.",
+"i": 18,
+"t0": 90.41,
+"t1": 99.3
+},
+{
+"b": 2,
+"s": 4,
+"text": "Em 1908, achou a nascente do Rio Verde.",
+"i": 19,
+"t0": 99.9,
+"t1": 103.06
+},
+{
+"b": 2,
+"s": 5,
+"text": "Em 1911, ao lado do companheiro Henry Costin, mapeou centenas de quilômetros de mata desconhecida.",
+"i": 20,
+"t0": 103.66,
+"t1": 110.13
+},
+{
+"b": 2,
+"s": 6,
+"text": "Voltava com histórias que pareciam inventadas, como a de uma sucuri de 19 metros, que fez os cientistas rirem dele.",
+"i": 21,
+"t0": 110.73,
+"t1": 117.38
+},
+{
+"b": 2,
+"s": 7,
+"text": "Mas também voltava com mapas precisos e com uma fama rara: a de quem respeitava os povos indígenas, chegava com presentes e paciência.",
+"i": 22,
+"t0": 117.98,
+"t1": 125.38
+},
+{
+"b": 2,
+"s": 8,
+"text": "Ao mesmo tempo, era um homem de crenças místicas: carregava uma estatueta de pedra verde e dizia que ela tinha poder sobre os povos da floresta.",
+"i": 23,
+"t0": 125.98,
+"t1": 133.73
+},
+{
+"b": 2,
+"s": 9,
+"text": "Os relatórios dele eram tão impressionantes que inspiraram Arthur Conan Doyle, o criador de Sherlock Holmes, a escrever O Mundo Perdido.",
+"i": 24,
+"t0": 134.33,
+"t1": 141.46
+},
+{
+"b": 3,
+"s": 0,
+"text": "Por volta de 1914, Fawcett chegou a uma conclusão que poucos aceitavam: a Amazônia já tinha abrigado uma civilização grande e organizada, e algumas ruínas podiam ter sobrevivido.",
+"i": 25,
+"t0": 143.86,
+"t1": 155.16
+},
+{
+"b": 3,
+"s": 1,
+"text": "Ele deu um nome a esse lugar: Z.",
+"i": 26,
+"t0": 155.76,
+"t1": 157.54
+},
+{
+"b": 3,
+"s": 2,
+"text": "Uma das pistas estava na Biblioteca Nacional, no Rio de Janeiro: o Manuscrito 512, de 1753.",
+"i": 27,
+"t0": 158.14,
+"t1": 165.48
+},
+{
+"b": 3,
+"s": 3,
+"text": "Nele, um grupo de bandeirantes conta ter achado as ruínas de uma cidade com arcos, uma estátua e um templo com inscrições.",
+"i": 28,
+"t0": 166.08,
+"t1": 173.04
+},
+{
+"b": 3,
+"s": 4,
+"text": "O texto descreve tudo em detalhes, menos uma coisa: onde ela ficava.",
+"i": 29,
+"t0": 173.64,
+"t1": 177.55
+},
+{
+"b": 4,
+"s": 0,
+"text": "A busca teve que esperar.",
+"i": 30,
+"t0": 179.95,
+"t1": 181.13
+},
+{
+"b": 4,
+"s": 1,
+"text": "Com a Primeira Guerra Mundial, Fawcett voltou à Europa e lutou em Flandres, na Bélgica, já perto dos cinquenta anos, chegando a tenente-coronel.",
+"i": 31,
+"t0": 181.73,
+"t1": 190.26
+},
+{
+"b": 4,
+"s": 2,
+"text": "Comandou uma brigada de artilharia, ganhou a Ordem de Serviço Distinto em 1917 e foi citado três vezes nos relatórios do comandante britânico.",
+"i": 32,
+"t0": 190.86,
+"t1": 199.81
+},
+{
+"b": 4,
+"s": 3,
+"text": "E há um detalhe curioso: ele só autorizava tiros contra alvos visíveis, ou contra alvos que dizia ter encontrado num tabuleiro Ouija.",
+"i": 33,
+"t0": 200.41,
+"t1": 207.75
+},
+{
+"b": 4,
+"s": 4,
+"text": "Quando a guerra acabou, ele voltou correndo para o Brasil.",
+"i": 34,
+"t0": 208.35,
+"t1": 211.18
+},
+{
+"b": 4,
+"s": 5,
+"text": "Em 1920, tentou achar Z com dois companheiros, que não aguentaram as dificuldades.",
+"i": 35,
+"t0": 211.78,
+"t1": 217.22
+},
+{
+"b": 4,
+"s": 6,
+"text": "Seguiu sozinho.",
+"i": 36,
+"t0": 217.82,
+"t1": 218.57
+},
+{
+"b": 4,
+"s": 7,
+"text": "Teve febre, precisou sacrificar o animal de carga e desistiu.",
+"i": 37,
+"t0": 219.17,
+"t1": 222.84
+},
+{
+"b": 4,
+"s": 8,
+"text": "Ele saiu da mata derrotado, mas com uma certeza: na próxima vez, iria até o fim.",
+"i": 38,
+"t0": 223.44,
+"t1": 228.32
+},
+{
+"b": 5,
+"s": 0,
+"text": "Em 20 de abril de 1925, Fawcett partiu de Cuiabá.",
+"i": 39,
+"t0": 230.72,
+"t1": 234.88
+},
+{
+"b": 5,
+"s": 1,
+"text": "Levou apenas duas pessoas para a parte final: o filho mais velho, Jack, com pouco mais de 20 anos, e Raleigh Rimmel, amigo de infância do rapaz.",
+"i": 40,
+"t0": 235.48,
+"t1": 243.85
+},
+{
+"b": 5,
+"s": 2,
+"text": "Ele acreditava que um grupo pequeno andaria mais leve e chamaria menos atenção.",
+"i": 41,
+"t0": 244.45,
+"t1": 248.6
+},
+{
+"b": 5,
+"s": 3,
+"text": "Levava comida enlatada, leite em pó, armas, sinalizadores, um sextante e um cronômetro.",
+"i": 42,
+"t0": 249.2,
+"t1": 254.46
+},
+{
+"b": 5,
+"s": 4,
+"text": "Na primeira parte do caminho, iam junto dois trabalhadores brasileiros, dois cavalos, oito mulas e dois cães.",
+"i": 43,
+"t0": 255.06,
+"t1": 261.58
+},
+{
+"b": 5,
+"s": 5,
+"text": "Antes de ir, deixou uma ordem estranha: se não voltassem, ninguém deveria ir procurá-los, para que os resgatadores não tivessem o mesmo destino.",
+"i": 44,
+"t0": 262.18,
+"t1": 270.26
+},
+{
+"b": 5,
+"s": 6,
+"text": "Em 29 de maio, de um lugar que ele chamou de Acampamento do Cavalo Morto, no Alto Xingu, mandou a última carta.",
+"i": 45,
+"t0": 270.86,
+"t1": 277.36
+},
+{
+"b": 5,
+"s": 7,
+"text": "Disse que estava pronto para entrar no desconhecido.",
+"i": 46,
+"t0": 277.96,
+"t1": 280.39
+},
+{
+"b": 5,
+"s": 8,
+"text": "E entrou.",
+"i": 47,
+"t0": 280.99,
+"t1": 281.39
+},
+{
+"b": 6,
+"s": 0,
+"text": "A última carta chegou à Inglaterra levada por um mensageiro indígena.",
+"i": 48,
+"t0": 283.79,
+"t1": 287.24
+},
+{
+"b": 6,
+"s": 1,
+"text": "E ela guarda um enigma.",
+"i": 49,
+"t0": 287.84,
+"t1": 288.85
+},
+{
+"b": 6,
+"s": 2,
+"text": "Na carta, Fawcett dá a posição do Acampamento do Cavalo Morto: onze graus e quarenta e três minutos sul.",
+"i": 50,
+"t0": 289.45,
+"t1": 295.87
+},
+{
+"b": 6,
+"s": 3,
+"text": "Num relatório enviado à imprensa, o mesmo lugar aparece a treze graus.",
+"i": 51,
+"t0": 296.47,
+"t1": 300.16
+},
+{
+"b": 6,
+"s": 4,
+"text": "Dois graus de diferença são mais de duzentos quilômetros de floresta.",
+"i": 52,
+"t0": 300.76,
+"t1": 304.48
+},
+{
+"b": 6,
+"s": 5,
+"text": "Pode ter sido um simples erro de digitação.",
+"i": 53,
+"t0": 305.08,
+"t1": 307.15
+},
+{
+"b": 6,
+"s": 6,
+"text": "Ou pode ter sido de propósito, para que ninguém encontrasse o caminho para Z.",
+"i": 54,
+"t0": 307.75,
+"t1": 311.62
+},
+{
+"b": 7,
+"s": 0,
+"text": "Os meses passaram sem notícias.",
+"i": 55,
+"t0": 314.02,
+"t1": 315.87
+},
+{
+"b": 7,
+"s": 1,
+"text": "Em 1927, a Royal Geographical Society declarou os três perdidos.",
+"i": 56,
+"t0": 316.47,
+"t1": 321.43
+},
+{
+"b": 7,
+"s": 2,
+"text": "A partir daí surgiram pistas, e todas desmoronaram.",
+"i": 57,
+"t0": 322.03,
+"t1": 325.0
+},
+{
+"b": 7,
+"s": 3,
+"text": "Uma placa com o nome de Fawcett e uma bússola dele apareceram, mas eram de viagens anteriores.",
+"i": 58,
+"t0": 325.6,
+"t1": 330.94
+},
+{
+"b": 7,
+"s": 4,
+"text": "Exploradores tentaram seguir o rastro.",
+"i": 59,
+"t0": 331.54,
+"t1": 333.45
+},
+{
+"b": 7,
+"s": 5,
+"text": "O americano George Miller Dyott disse ter achado provas da morte de Fawcett, mas não convenceu ninguém.",
+"i": 60,
+"t0": 334.05,
+"t1": 339.29
+},
+{
+"b": 7,
+"s": 6,
+"text": "Entre 1930 e 1931, a aventureira Aloha Wanderwell procurou de hidroavião, fez um pouso de emergência e viveu seis semanas com o povo Bororo, sem encontrar nada.",
+"i": 61,
+"t0": 339.89,
+"t1": 351.18
+},
+{
+"b": 7,
+"s": 7,
+"text": "Em 1951, o sertanista Orlando Villas-Bôas recebeu ossos que seriam do coronel; análises posteriores mostraram que não eram, e Brian, o filho mais novo de Fawcett, nunca aceitou aquela versão.",
+"i": 62,
+"t0": 351.78,
+"t1": 364.11
+},
+{
+"b": 7,
+"s": 8,
+"text": "Em 1979, o anel de Fawcett apareceu numa casa de penhores, e com ele uma nova teoria: a de que ladrões mataram os três e venderam o que eles levavam.",
+"i": 63,
+"t0": 364.71,
+"t1": 374.49
+},
+{
+"b": 7,
+"s": 9,
+"text": "E existe um mito que vale corrigir: costuma-se dizer que cem pessoas morreram procurando o explorador.",
+"i": 64,
+"t0": 375.09,
+"t1": 380.21
+},
+{
+"b": 7,
+"s": 10,
+"text": "O registro que existe é de uma só, um homem que foi atrás dele sozinho.",
+"i": 65,
+"t0": 380.81,
+"t1": 384.61
+},
+{
+"b": 8,
+"s": 0,
+"text": "Os últimos a ver Fawcett foram os Kalapalo, povo do Alto Xingu.",
+"i": 66,
+"t0": 387.01,
+"t1": 390.42
+},
+{
+"b": 8,
+"s": 1,
+"text": "As versões colhidas ao longo do século se contradizem: algumas falam de briga, outras de doença, outras de um povo vizinho perigoso.",
+"i": 67,
+"t0": 391.02,
+"t1": 398.49
+},
+{
+"b": 8,
+"s": 2,
+"text": "Em 2005, o jornalista David Grann ouviu deles uma memória transmitida por gerações.",
+"i": 68,
+"t0": 399.09,
+"t1": 404.32
+},
+{
+"b": 8,
+"s": 3,
+"text": "Os três estrangeiros ficaram na aldeia e depois seguiram para o leste, mesmo avisados do perigo.",
+"i": 69,
+"t0": 404.92,
+"t1": 410.02
+},
+{
+"b": 8,
+"s": 4,
+"text": "Durante cinco noites, os Kalapalo viram a fumaça das fogueiras deles.",
+"i": 70,
+"t0": 410.62,
+"t1": 414.6
+},
+{
+"b": 8,
+"s": 5,
+"text": "Na sexta noite, a fumaça não subiu mais.",
+"i": 71,
+"t0": 415.2,
+"t1": 417.55
+},
+{
+"b": 9,
+"s": 0,
+"text": "Durante décadas, Fawcett foi tratado como sonhador.",
+"i": 72,
+"t0": 419.95,
+"t1": 422.74
+},
+{
+"b": 9,
+"s": 1,
+"text": "Mas a arqueologia mudou essa história.",
+"i": 73,
+"t0": 423.34,
+"t1": 425.2
+},
+{
+"b": 9,
+"s": 2,
+"text": "No Alto Xingu, não muito longe de onde ele sumiu, pesquisadores trabalhando com o povo Kuikuro estudam Kuhikugu: cerca de vinte povoados ligados por estradas, pontes e valas, onde podem ter vivido até 50 mil pessoas, entre 1.500 e 400 anos atrás.",
+"i": 74,
+"t0": 425.8,
+"t1": 441.52
+},
+{
+"b": 9,
+"s": 3,
+"text": "Não era uma cidade de pedra como a do manuscrito.",
+"i": 75,
+"t0": 442.12,
+"t1": 444.51
+},
+{
+"b": 9,
+"s": 4,
+"text": "Os moradores de Kuhikugu não erguiam pirâmides: faziam monumentos longos no chão, cavavam valas de defesa e abriam praças de 150 metros.",
+"i": 76,
+"t0": 445.11,
+"t1": 453.7
+},
+{
+"b": 9,
+"s": 5,
+"text": "A terra escura ao redor, que os Kuikuro chamam de egepe, mostra séculos de agricultura.",
+"i": 77,
+"t0": 454.3,
+"t1": 458.99
+},
+{
+"b": 9,
+"s": 6,
+"text": "As doenças trazidas pelos europeus chegaram antes deles, e a floresta engoliu tudo.",
+"i": 78,
+"t0": 459.59,
+"t1": 464.39
+},
+{
+"b": 9,
+"s": 7,
+"text": "Em 2022, na Bolívia, um levantamento a laser feito de avião revelou estradas e montes da cultura Casarabe.",
+"i": 79,
+"t0": 464.99,
+"t1": 471.88
+},
+{
+"b": 9,
+"s": 8,
+"text": "Mas era exatamente o tipo de civilização que quase ninguém acreditava existir, e que Fawcett defendia.",
+"i": 80,
+"t0": 472.48,
+"t1": 478.3
+},
+{
+"b": 10,
+"s": 0,
+"text": "Em 2005, a investigação de David Grann saiu na revista The New Yorker.",
+"i": 81,
+"t0": 480.7,
+"t1": 485.18
+},
+{
+"b": 10,
+"s": 1,
+"text": "Em 2009, virou o livro Z: A Cidade Perdida.",
+"i": 82,
+"t0": 485.78,
+"t1": 488.98
+},
+{
+"b": 10,
+"s": 2,
+"text": "E em 2016, a história chegou ao cinema, dirigida por James Gray, com Charlie Hunnam no papel de Fawcett.",
+"i": 83,
+"t0": 489.58,
+"t1": 496.01
+},
+{
+"b": 10,
+"s": 3,
+"text": "Quase um século depois, o explorador que todos chamavam de sonhador virou personagem de filme.",
+"i": 84,
+"t0": 496.61,
+"t1": 501.31
+},
+{
+"b": 11,
+"s": 0,
+"text": "E então, o que aconteceu com o Coronel Fawcett?",
+"i": 85,
+"t0": 503.71,
+"t1": 506.29
+},
+{
+"b": 11,
+"s": 1,
+"text": "A explicação A diz que ele, o filho e o amigo morreram na selva, de fome, doença ou num conflito, como tantos exploradores da época.",
+"i": 86,
+"t0": 506.89,
+"t1": 514.81
+},
+{
+"b": 11,
+"s": 2,
+"text": "A explicação B diz que ele sumiu de propósito: escondeu a localização verdadeira, proibiu que o procurassem e talvez nunca tenha pensado em voltar.",
+"i": 87,
+"t0": 515.41,
+"t1": 523.27
+},
+{
+"b": 11,
+"s": 3,
+"text": "Em 2004, um diretor de teatro que estudou os papéis pessoais dele afirmou que Fawcett queria fundar uma comunidade na mata.",
+"i": 88,
+"t0": 523.87,
+"t1": 531.02
+},
+{
+"b": 11,
+"s": 4,
+"text": "Os fatos estão na mesa.",
+"i": 89,
+"t0": 531.62,
+"t1": 532.83
+},
+{
+"b": 11,
+"s": 5,
+"text": "Agora quem decide é você.",
+"i": 90,
+"t0": 533.43,
+"t1": 534.67
+},
+{
+"b": 11,
+"s": 6,
+"text": "Comenta A ou B.",
+"i": 91,
+"t0": 535.27,
+"t1": 535.91
+}
+],
+"blocos": [
+{
+"b": 0,
+"t0": 0.8
+},
+{
+"title_card": 34.81
+},
+{
+"b": 1,
+"t0": 39.31
+},
+{
+"b": 2,
+"t0": 80.99
+},
+{
+"b": 3,
+"t0": 143.86
+},
+{
+"b": 4,
+"t0": 179.95
+},
+{
+"b": 5,
+"t0": 230.72
+},
+{
+"b": 6,
+"t0": 283.79
+},
+{
+"b": 7,
+"t0": 314.02
+},
+{
+"b": 8,
+"t0": 387.01
+},
+{
+"b": 9,
+"t0": 419.95
+},
+{
+"b": 10,
+"t0": 480.7
+},
+{
+"b": 11,
+"t0": 503.71
+}
+],
+"total": 540.51
+}
