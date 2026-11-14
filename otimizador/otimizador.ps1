@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
   J.A.R.V.I.S - Otimizador de PC (Windows 10/11)
   Tudo o que muda é registrado em backup e pode ser desfeito pela opção [R] do menu.
@@ -9,7 +9,14 @@ $Base    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Backup  = Join-Path $Base 'backup'
 $Estado  = Join-Path $Backup 'estado.json'
 $Log     = Join-Path $Base ("relatorio-{0:yyyy-MM-dd_HH-mm}.txt" -f (Get-Date))
+if ($Base -like "$env:TEMP*" -or $Base -like "$env:SystemRoot\Temp*") {
+    Write-Host "`n  O otimizador está rodando de dentro do .zip (pasta temporária)." -ForegroundColor Red
+    Write-Host "  Extraia o .zip (botão direito > Extrair tudo) e abra o Otimizar.bat da pasta extraída.`n" -ForegroundColor Red
+    exit 1
+}
 New-Item -ItemType Directory -Force -Path $Backup | Out-Null
+$script:PontoFeito = $false
+$EhNotebook = [bool](Get-CimInstance Win32_Battery)
 
 # ---------- utilidades ----------
 function Diga($t, $c = 'Cyan') { Write-Host "  $t" -ForegroundColor $c; Add-Content $Log $t }
@@ -17,7 +24,12 @@ function Ok($t)    { Diga "[ok] $t" 'Green' }
 function Aviso($t) { Diga "[!]  $t" 'Yellow' }
 
 function Ler-Estado {
-    if (Test-Path $Estado) { Get-Content $Estado -Raw | ConvertFrom-Json } else { [pscustomobject]@{ registro = @(); servicos = @(); plano = $null } }
+    $e = $null
+    if (Test-Path $Estado) { $e = Get-Content $Estado -Raw | ConvertFrom-Json }
+    if (-not $e) { $e = [pscustomobject]@{ registro = @(); servicos = @(); plano = $null } }
+    $e.registro = @($e.registro | Where-Object { $_ })
+    $e.servicos = @($e.servicos | Where-Object { $_ })
+    $e
 }
 function Salvar-Estado($e) { $e | ConvertTo-Json -Depth 5 | Set-Content $Estado -Encoding UTF8 }
 
@@ -49,13 +61,14 @@ function Tamanho-Livre { [math]::Round((Get-PSDrive C).Free / 1GB, 2) }
 
 # ---------- 0. segurança ----------
 function Ponto-Restauracao {
+    if ($script:PontoFeito) { return }
     Diga "Criando ponto de restauração do sistema..."
     Enable-ComputerRestore -Drive "$env:SystemDrive\"
     # O Windows limita a 1 ponto a cada 24h; liberamos isso só para este ponto.
     $k = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore'
-    Set-ItemProperty $k -Name SystemRestorePointCreationFrequency -Value 0 -Type DWord -Force
+    Definir-Registro $k 'SystemRestorePointCreationFrequency' 0
     Checkpoint-Computer -Description 'JARVIS - antes da otimizacao' -RestorePointType MODIFY_SETTINGS
-    if ($?) { Ok "Ponto de restauração criado." } else { Aviso "Não consegui criar o ponto de restauração (a Proteção do Sistema pode estar desligada)." }
+    if ($?) { $script:PontoFeito = $true; Ok "Ponto de restauração criado." } else { Aviso "Não consegui criar o ponto de restauração (a Proteção do Sistema pode estar desligada)." }
 }
 
 # ---------- 1. limpeza ----------
@@ -75,17 +88,26 @@ function Limpeza {
     )
     foreach ($p in $pastas) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }
 
-    # Cache do Windows Update
-    Stop-Service wuauserv, bits -Force
-    Remove-Item "$env:SystemRoot\SoftwareDistribution\Download\*" -Recurse -Force
-    Start-Service wuauserv, bits
+    # Cache do Windows Update: só mexe se não houver atualização instalando ou esperando reinício
+    $ocupado = (Get-Process TiWorker, TrustedInstaller -ErrorAction SilentlyContinue) -or
+               (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired') -or
+               (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending')
+    if ($ocupado) {
+        Aviso "O Windows Update está trabalhando ou esperando reinício: pulei o cache dele e o DISM."
+    } else {
+        Stop-Service wuauserv, bits -Force
+        Remove-Item "$env:SystemRoot\SoftwareDistribution\Download\*" -Recurse -Force
+        Start-Service wuauserv, bits
+    }
 
     Clear-RecycleBin -Force
     ipconfig /flushdns | Out-Null
 
     # Componentes antigos do Windows (pode demorar alguns minutos)
-    Diga "Removendo versões antigas de componentes do Windows (DISM)... pode demorar."
-    Dism.exe /Online /Cleanup-Image /StartComponentCleanup /Quiet | Out-Null
+    if (-not $ocupado) {
+        Diga "Removendo versões antigas de componentes do Windows (DISM)... pode demorar."
+        Dism.exe /Online /Cleanup-Image /StartComponentCleanup /Quiet | Out-Null
+    }
 
     $depois = Tamanho-Livre
     Ok ("Limpeza concluída: {0} GB liberados." -f [math]::Max(0, [math]::Round($depois - $antes, 2)))
@@ -99,9 +121,19 @@ function Energia {
         $atual = (powercfg /getactivescheme) -replace '.*:\s*([a-f0-9-]{36}).*', '$1'
         $e.plano = $atual.Trim(); Salvar-Estado $e
     }
-    $ultimate = 'e9a42b02-d5df-448d-aa00-03f14749eb61'
-    $saida = powercfg -duplicatescheme $ultimate 2>$null
-    $guid = ([regex]'[a-f0-9-]{36}').Match("$saida").Value
+    if ($EhNotebook) {
+        # Em notebook o 'Desempenho Máximo' esquenta e acaba com a bateria; Alto Desempenho é o limite sensato.
+        powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+        Ok "Notebook detectado: plano 'Alto Desempenho' ativado. Hibernação mantida (protege contra bateria acabando)."
+        return
+    }
+    # Reaproveita o plano se já foi criado antes, para não acumular cópias
+    $linha = powercfg /list | Select-String 'Desempenho M[aá]ximo|Ultimate Performance' | Select-Object -First 1
+    $guid = if ($linha) { ([regex]'[a-f0-9-]{36}').Match("$linha").Value } else { $null }
+    if (-not $guid) {
+        $saida = powercfg -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>$null
+        $guid = ([regex]'[a-f0-9-]{36}').Match("$saida").Value
+    }
     if ($guid) { powercfg /setactive $guid; Ok "Plano 'Desempenho Máximo' ativado." }
     else { powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c; Ok "Plano 'Alto Desempenho' ativado." }
     powercfg /hibernate off   # libera o hiberfil.sys (vários GB) e desliga a inicialização rápida
@@ -139,14 +171,12 @@ function Visual {
     Definir-Registro 'HKCU:\Control Panel\Desktop\WindowMetrics' 'MinAnimate' '0' 'String'
     Definir-Registro 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' 'EnableTransparency' 0
     Definir-Registro 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' 'TaskbarAnimations' 0
-    # Apps em segundo plano
-    Definir-Registro 'HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications' 'GlobalUserDisabled' 1
     # Sugestões, dicas e anúncios do Windows
     $cdm = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
     foreach ($n in 'SubscribedContent-338388Enabled','SubscribedContent-338389Enabled','SubscribedContent-353694Enabled','SystemPaneSuggestionsEnabled','SilentInstalledAppsEnabled') {
         Definir-Registro $cdm $n 0
     }
-    Ok "Animações, transparência, apps em segundo plano e anúncios desligados."
+    Ok "Animações, transparência e anúncios desligados."
 }
 
 # ---------- 5. privacidade e serviços ----------
@@ -237,8 +267,7 @@ function Drivers {
     try {
         $sessao  = New-Object -ComObject Microsoft.Update.Session
         $busca   = $sessao.CreateUpdateSearcher()
-        $busca.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'   # Microsoft Update
-        $busca.SearchScope = 1; $busca.ServerSelection = 3
+        $busca.ServerSelection = 2   # Windows Update
         $res = $busca.Search("IsInstalled=0 and Type='Driver' and IsHidden=0")
         if ($res.Updates.Count -eq 0) {
             Ok "Nenhum driver novo no Windows Update."
@@ -271,10 +300,10 @@ function Drivers {
         $nome = $gpu.Name
         $data = if ($gpu.DriverDate) { $gpu.DriverDate.ToString('dd/MM/yyyy') } else { '?' }
         Diga "  $nome - driver $($gpu.DriverVersion) de $data" 'White'
-        $site = $null; $winget = $null
-        if     ($nome -match 'NVIDIA')     { $site = 'https://www.nvidia.com/pt-br/drivers/';  $winget = 'Nvidia.NvidiaApp' }
-        elseif ($nome -match 'AMD|Radeon') { $site = 'https://www.amd.com/pt/support/download/drivers.html' }
-        elseif ($nome -match 'Intel')      { $site = 'https://www.intel.com.br/content/www/br/pt/support/detect.html' }
+        $site = $null; $winget = $null; $id = "$($gpu.PNPDeviceID)"
+        if     ($id -match 'VEN_10DE' -or $nome -match 'NVIDIA')     { $site = 'https://www.nvidia.com/pt-br/drivers/';  $winget = 'Nvidia.NvidiaApp' }
+        elseif ($id -match 'VEN_1002' -or $nome -match 'AMD|Radeon') { $site = 'https://www.amd.com/pt/support/download/drivers.html' }
+        elseif ($id -match 'VEN_8086' -or $nome -match 'Intel')      { $site = 'https://www.intel.com.br/content/www/br/pt/support/detect.html' }
         if (-not $site) { continue }
 
         $instalado = $false

@@ -1,5 +1,6 @@
 # J.A.R.V.I.S — Otimizador de PC (Windows 10/11)
 
+0. **Windows recém-formatado:** rode o Windows Update até não sobrar nada e reinicie antes. Assim os drivers vêm completos e o otimizador não atrapalha atualizações em andamento.
 1. Baixe a pasta `otimizador` inteira.
 2. Clique duas vezes em **`Otimizar.bat`** e aceite o pedido de administrador.
 3. Escolha **[1] Otimização completa** e reinicie o PC no fim.
@@ -8,9 +9,9 @@
 | Opção | Efeito |
 |---|---|
 | Limpeza | Temporários, cache do Windows Update, cache de shaders, lixeira, DNS, componentes antigos (DISM) |
-| Energia | Plano "Desempenho Máximo", desliga hibernação (libera vários GB) |
+| Energia | Plano "Desempenho Máximo" e hibernação desligada (libera vários GB). Em notebook: "Alto Desempenho" e hibernação mantida |
 | Jogos | Modo de Jogo, Game DVR desligado, agendamento de GPU por hardware, prioridade de jogos, sem aceleração do mouse |
-| Visual | Sem animações/transparência, sem apps em segundo plano, sem anúncios do Windows |
+| Visual | Sem animações/transparência, sem anúncios do Windows |
 | Serviços | Telemetria desligada; SysMain em manual se o disco for SSD |
 | Disco | TRIM em SSD, desfragmentação em HD |
 | Inicialização | Lista o que abre com o Windows e abre o Gerenciador de Tarefas (você escolhe o que desligar) |
