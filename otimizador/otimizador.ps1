@@ -213,6 +213,86 @@ function Bloatware {
     Aviso "A Xbox App e a Microsoft Store foram mantidas (jogos precisam delas). Removidos podem ser reinstalados pela Store."
 }
 
+# ---------- D. drivers ----------
+function Drivers {
+    Ponto-Restauracao
+
+    # 1. Cópia dos drivers atuais, para poder voltar atrás
+    $copia = Join-Path $Backup ("drivers-{0:yyyy-MM-dd}" -f (Get-Date))
+    if (-not (Test-Path $copia)) {
+        Diga "Copiando os drivers atuais para $copia ..."
+        New-Item -ItemType Directory -Force -Path $copia | Out-Null
+        Export-WindowsDriver -Online -Destination $copia | Out-Null
+        Ok "Cópia feita. Para restaurar um driver: pnputil /add-driver `"$copia\*.inf`" /subdirs /install"
+    }
+
+    # 2. Dispositivos sem driver ou com problema
+    Diga "Procurando dispositivos sem driver ou com erro..."
+    $ruins = Get-PnpDevice -PresentOnly | Where-Object { $_.Status -in 'Error','Unknown','Degraded' }
+    if ($ruins) { foreach ($d in $ruins) { Aviso "Com problema: $($d.FriendlyName) [$($d.Class)] - código $($d.ConfigManagerErrorCode)" } }
+    else { Ok "Todos os dispositivos estão com driver." }
+
+    # 3. Drivers pelo Windows Update (assinados e testados pela Microsoft)
+    Diga "Buscando drivers no Windows Update... pode levar alguns minutos."
+    try {
+        $sessao  = New-Object -ComObject Microsoft.Update.Session
+        $busca   = $sessao.CreateUpdateSearcher()
+        $busca.ServiceID = '7971f918-a847-4430-9279-4a52d1efe18d'   # Microsoft Update
+        $busca.SearchScope = 1; $busca.ServerSelection = 3
+        $res = $busca.Search("IsInstalled=0 and Type='Driver' and IsHidden=0")
+        if ($res.Updates.Count -eq 0) {
+            Ok "Nenhum driver novo no Windows Update."
+        } else {
+            $lote = New-Object -ComObject Microsoft.Update.UpdateColl
+            foreach ($u in $res.Updates) {
+                Diga ("  - {0}  ({1})" -f $u.Title, $u.DriverManufacturer) 'White'
+                if (-not $u.EulaAccepted) { $u.AcceptEula() }
+                [void]$lote.Add($u)
+            }
+            $resp = Read-Host "   Instalar estes $($lote.Count) driver(s)? (S/N)"
+            if ($resp -match '^[sS]') {
+                Diga "Baixando..."
+                $dl = $sessao.CreateUpdateDownloader(); $dl.Updates = $lote; [void]$dl.Download()
+                Diga "Instalando..."
+                $inst = $sessao.CreateUpdateInstaller(); $inst.Updates = $lote
+                $r = $inst.Install()
+                for ($i = 0; $i -lt $lote.Count; $i++) {
+                    $c = $r.GetUpdateResult($i).ResultCode
+                    if ($c -eq 2) { Ok $lote.Item($i).Title } else { Aviso "Falhou ($c): $($lote.Item($i).Title)" }
+                }
+                if ($r.RebootRequired) { Aviso "Reinicie o computador para concluir a instalação." }
+            }
+        }
+    } catch { Aviso "Não consegui consultar o Windows Update: $($_.Exception.Message)" }
+
+    # 4. Placa de vídeo: o driver do fabricante é mais novo que o do Windows Update
+    Diga "Verificando a placa de vídeo..."
+    foreach ($gpu in Get-CimInstance Win32_VideoController) {
+        $nome = $gpu.Name
+        $data = if ($gpu.DriverDate) { $gpu.DriverDate.ToString('dd/MM/yyyy') } else { '?' }
+        Diga "  $nome - driver $($gpu.DriverVersion) de $data" 'White'
+        $site = $null; $winget = $null
+        if     ($nome -match 'NVIDIA')     { $site = 'https://www.nvidia.com/pt-br/drivers/';  $winget = 'Nvidia.NvidiaApp' }
+        elseif ($nome -match 'AMD|Radeon') { $site = 'https://www.amd.com/pt/support/download/drivers.html' }
+        elseif ($nome -match 'Intel')      { $site = 'https://www.intel.com.br/content/www/br/pt/support/detect.html' }
+        if (-not $site) { continue }
+
+        $instalado = $false
+        if ($winget -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+            $resp = Read-Host "   Instalar o app oficial da NVIDIA (mantém o driver de vídeo sempre atualizado)? (S/N)"
+            if ($resp -match '^[sS]') {
+                winget install --id $winget -e --accept-source-agreements --accept-package-agreements
+                if ($LASTEXITCODE -eq 0) { Ok "App da NVIDIA instalado. Abra-o e clique em 'Drivers' > 'Baixar'."; $instalado = $true }
+            }
+        }
+        if (-not $instalado) {
+            Aviso "Abrindo a página oficial de drivers do fabricante (detecta sua placa automaticamente)."
+            Start-Process $site
+        }
+    }
+    Ok "Verificação de drivers concluída."
+}
+
 # ---------- R. desfazer ----------
 function Desfazer {
     $e = Ler-Estado
@@ -230,7 +310,7 @@ function Desfazer {
 }
 
 function Tudo {
-    Ponto-Restauracao; Limpeza; Energia; Jogos; Visual; Servicos; Disco
+    Ponto-Restauracao; Limpeza; Drivers; Energia; Jogos; Visual; Servicos; Disco
     Diga ""
     Aviso "Reinicie o computador para que tudo tenha efeito."
 }
@@ -252,6 +332,7 @@ while ($true) {
     Write-Host "   [7] Otimizar discos"
     Write-Host "   [8] Ver programas de inicialização"
     Write-Host "   [9] Remover bloatware"
+    Write-Host "   [D] Procurar e instalar drivers" -ForegroundColor Green
     Write-Host "   [S] Reparar Windows (DISM + SFC, demorado)"
     Write-Host "   [R] DESFAZER tudo" -ForegroundColor Yellow
     Write-Host "   [0] Sair"
@@ -268,6 +349,7 @@ while ($true) {
         '7' { Disco }
         '8' { Inicializacao }
         '9' { Ponto-Restauracao; Bloatware }
+        'D' { Drivers }
         'S' { Reparo }
         'R' { Desfazer }
         '0' { exit }
