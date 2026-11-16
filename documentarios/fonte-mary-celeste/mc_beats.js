@@ -82,7 +82,7 @@ const BEATS = [
   [["~mas", "_NENHUM QUEIMADO_"], (t) => plank(0, 0) + stamp(t, 0.4, "SEM FULIGEM", 960, 860, -6, 70)],
   [["*2006*", "~Andrea Sella · modelo do porão"], (t) => drop(t, flask()) + brush(1450, 900, at(t, 0.2, 0.8), "2006", 380)],
   [["*BOLA DE FOGO*", "~sem fuligem"], (t) => barrels(0) + flame(at(t, 0.2, 2.4))],
-  [["*2026*", "~Manchester · madeira e etanol", "SEM DEIXAR RASTRO"], (t) => t < 6 ? drop(t, flask()) + brush(1450, 900, at(t, 0.2, 0.8), "2026", 380) : barrels(0) + flame(at(t, 6.3, 8.5)) + stamp(t, 9.5, "SEM MARCAS", 1300, 450, 10, 64)],
+  [["*2026*", "~Manchester · madeira e etanol", "SEM DEIXAR RASTRO"], (t) => t < 6 ? drop(t, flask()) + brush(1450, 900, at(t, 0.2, 0.8), "2026", 380) : barrels(0) + flame(at(t, 6.3, 8.5)) + stamp(t, 9.5, "SEM MARCAS", 1350, 880, -8, 64)],
   // 9 · Outras pistas
   [["~outras peças no", "*TABULEIRO*"], (t) => drop(t, PROPS.scattered())],
   [["~falha nas bombas:", "*FALSO ALARME*"], (t) => drop(t, rod()) + stamp(t, 3, "BOMBAS?", 1300, 470, 10, 56)],

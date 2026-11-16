@@ -55,8 +55,8 @@ window.setFrame = (T) => {
   const br = 4 * Math.sin(T * 0.07 + ph) + 0.6 * Math.sin(T * 0.9) * Math.max(0, Math.sin(T * 0.17 + 1));
   const cloud = 0.5 + 0.5 * Math.sin(T * 0.13 + ph) * Math.sin(T * 0.051 + 0.7);
   $("persiana").style.transform = `translate(${bx}px, ${by}px) rotate(${br}deg)`;
-  $("persiana").style.opacity = String(0.35 + 0.4 * cloud);
-  $("sun").style.opacity = String(0.25 + 0.6 * cloud);
+  $("persiana").style.opacity = String(0.1 + 0.16 * cloud);
+  $("sun").style.opacity = String(0.5 + 0.4 * cloud);
   const z = 1.03 + 0.015 * Math.sin(T * 0.045);
   $("cam").style.transform = `translate(${9 * Math.sin(T * 0.09)}px, ${6 * Math.sin(T * 0.071 + 1)}px) scale(${z})`;
   const g = Math.floor(T * 15) % 3; for (let i = 0; i < 3; i++) $("ov" + i).style.display = i === g ? "block" : "none";

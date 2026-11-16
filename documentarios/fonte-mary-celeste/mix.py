@@ -34,7 +34,7 @@ wn=rng.standard_normal(N); br=np.cumsum(wn); cs=np.concatenate([[0],np.cumsum(br
 tt=np.arange(N)/SR; swell=(0.55+0.45*np.sin(2*np.pi*tt/7.5))*(0.7+0.3*np.sin(2*np.pi*tt/23+1))
 music+=br*swell*0.05
 # narration
-for f in TL['frases']: put(out,load(f"vo2/v_{f['i']:02d}.wav"),f['t0'],1.0)
+for f in TL['frases']: put(out,load(f"vfx/v_{f['i']:02d}.wav"),f['t0'],1.0)
 # duck the music under the voice
 voice_env=np.convolve(np.abs(out),np.ones(4410)/4410,'same'); duck=1-0.55*np.clip(voice_env*12,0,1)
 mix=out+music*duck
